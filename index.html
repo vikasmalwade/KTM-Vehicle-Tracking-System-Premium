@@ -11,17 +11,546 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #0b0d12; font-family: 'Segoe UI', sans-serif; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0f1117; }
-    ::-webkit-scrollbar-thumb { background: #2a2f40; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #ff5500; }
-    select option { background: #111520; color: #e8e8e8; }
-    input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
-      50%  { top: 85%; }
-      100% { top: 10%; }
+
+    @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Barlow:wght@300;400;500;600;700;800;900&family=Barlow+Condensed:wght@400;600;700;800;900&family=Share+Tech+Mono&display=swap');
+
+    :root {
+      --bg-base: #070a12;
+      --bg-card: rgba(255,255,255,0.03);
+      --bg-card-hover: rgba(255,255,255,0.055);
+      --bg-surface: #0d1120;
+      --bg-elevated: #111827;
+      --orange: #ff6600;
+      --orange-glow: rgba(255,102,0,0.35);
+      --orange-dim: rgba(255,102,0,0.15);
+      --orange-bright: #ff7a1a;
+      --blue: #3b82f6;
+      --blue-dim: rgba(59,130,246,0.15);
+      --purple: #8b5cf6;
+      --purple-dim: rgba(139,92,246,0.15);
+      --green: #10b981;
+      --green-dim: rgba(16,185,129,0.15);
+      --yellow: #f59e0b;
+      --yellow-dim: rgba(245,158,11,0.15);
+      --red: #ef4444;
+      --red-dim: rgba(239,68,68,0.15);
+      --cyan: #06b6d4;
+      --cyan-dim: rgba(6,182,212,0.15);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #475569;
+      --border: rgba(255,255,255,0.08);
+      --border-orange: rgba(255,102,0,0.4);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+      --sidebar-width: 220px;
+      --header-height: 68px;
+      --font-display: 'Rajdhani', 'Barlow Condensed', sans-serif;
+      --font-body: 'Barlow', 'Segoe UI', sans-serif;
+      --font-mono: 'Share Tech Mono', 'Courier New', monospace;
     }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg-base);
+      font-family: var(--font-body);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background:
+        radial-gradient(ellipse 800px 600px at 0% 0%, rgba(255,102,0,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 600px 500px at 100% 100%, rgba(59,130,246,0.04) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #root { position: relative; z-index: 1; }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,102,0,0.3); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--orange); }
+
+    select option { background: #111827; color: #f1f5f9; }
+    input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.6) sepia(1) saturate(3) hue-rotate(340deg); cursor: pointer; }
+
+    /* === GLASSMORPHISM CARD === */
+    .glass-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .glass-card:hover { background: var(--bg-card-hover); border-color: rgba(255,255,255,0.12); }
+
+    /* === STAT CARDS === */
+    .stat-card {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: default;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .stat-card:hover { transform: translateY(-4px); }
+    .stat-card:hover::before { opacity: 1; }
+
+    .stat-card.orange { background: linear-gradient(135deg, #1a0d00, #201000); border: 1px solid rgba(255,102,0,0.25); }
+    .stat-card.orange:hover { box-shadow: 0 8px 32px rgba(255,102,0,0.25); border-color: rgba(255,102,0,0.5); }
+    .stat-card.blue { background: linear-gradient(135deg, #0a0f1e, #0d1528); border: 1px solid rgba(59,130,246,0.2); }
+    .stat-card.blue:hover { box-shadow: 0 8px 32px rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.4); }
+    .stat-card.purple { background: linear-gradient(135deg, #0f0a1e, #120d25); border: 1px solid rgba(139,92,246,0.2); }
+    .stat-card.purple:hover { box-shadow: 0 8px 32px rgba(139,92,246,0.2); border-color: rgba(139,92,246,0.4); }
+    .stat-card.green { background: linear-gradient(135deg, #061510, #081b14); border: 1px solid rgba(16,185,129,0.2); }
+    .stat-card.green:hover { box-shadow: 0 8px 32px rgba(16,185,129,0.2); border-color: rgba(16,185,129,0.4); }
+    .stat-card.yellow { background: linear-gradient(135deg, #191000, #201500); border: 1px solid rgba(245,158,11,0.2); }
+    .stat-card.yellow:hover { box-shadow: 0 8px 32px rgba(245,158,11,0.2); border-color: rgba(245,158,11,0.4); }
+    .stat-card.red { background: linear-gradient(135deg, #1a0505, #200a0a); border: 1px solid rgba(239,68,68,0.2); }
+    .stat-card.red:hover { box-shadow: 0 8px 32px rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.4); }
+
+    /* === SIDEBAR === */
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: var(--header-height);
+      bottom: 0;
+      width: var(--sidebar-width);
+      background: rgba(7,10,18,0.95);
+      border-right: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 100;
+      overflow-y: auto;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      font-family: var(--font-display);
+    }
+    .sidebar-item:hover {
+      background: rgba(255,102,0,0.08);
+      color: var(--text-secondary);
+      border-color: rgba(255,102,0,0.15);
+      transform: translateX(3px);
+    }
+    .sidebar-item.active {
+      background: rgba(255,102,0,0.15);
+      border-color: rgba(255,102,0,0.4);
+      color: var(--orange);
+      box-shadow: 0 0 20px rgba(255,102,0,0.1), inset 0 0 20px rgba(255,102,0,0.05);
+    }
+    .sidebar-item .icon { font-size: 16px; flex-shrink: 0; }
+
+    /* === HEADER === */
+    .app-header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--header-height);
+      background: rgba(7,10,18,0.95);
+      border-bottom: 1px solid var(--border-orange);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+      box-shadow: 0 1px 0 var(--border-orange), 0 4px 32px rgba(255,102,0,0.08);
+    }
+
+    /* === MAIN CONTENT === */
+    .main-content {
+      margin-left: var(--sidebar-width);
+      padding-top: var(--header-height);
+      min-height: 100vh;
+    }
+
+    .content-area {
+      padding: 24px;
+      max-width: 1400px;
+    }
+
+    /* === BUTTONS === */
+    .btn-primary {
+      background: linear-gradient(135deg, #cc4400, var(--orange));
+      border: none;
+      color: white;
+      padding: 10px 22px;
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+      font-family: var(--font-display);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 16px var(--orange-glow);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 8px 24px var(--orange-glow);
+      background: linear-gradient(135deg, var(--orange), var(--orange-bright));
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+      font-family: var(--font-body);
+      transition: all 0.2s ease;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.15);
+      color: var(--text-primary);
+    }
+
+    .btn-icon {
+      background: rgba(255,102,0,0.1);
+      border: 1px solid rgba(255,102,0,0.3);
+      color: var(--orange);
+      padding: 6px 12px;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      transition: all 0.2s ease;
+    }
+    .btn-icon:hover {
+      background: rgba(255,102,0,0.2);
+      border-color: var(--orange);
+      transform: scale(1.05);
+    }
+
+    /* === SEARCH PILLS === */
+    .search-pill {
+      padding: 7px 16px;
+      border-radius: 50px;
+      border: 1px solid;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: var(--font-display);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .search-pill.active {
+      background: var(--orange);
+      border-color: var(--orange);
+      color: white;
+      box-shadow: 0 4px 12px var(--orange-glow);
+    }
+    .search-pill.inactive {
+      background: transparent;
+      border-color: rgba(255,255,255,0.1);
+      color: var(--text-muted);
+    }
+    .search-pill.inactive:hover {
+      border-color: rgba(255,102,0,0.4);
+      color: var(--text-secondary);
+      background: var(--orange-dim);
+    }
+
+    /* === INPUTS === */
+    .input-field {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 11px 16px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: var(--font-body);
+      width: 100%;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .input-field:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px var(--orange-dim), 0 0 16px var(--orange-dim);
+      background: rgba(255,102,0,0.05);
+    }
+    .input-field::placeholder { color: var(--text-muted); }
+
+    .input-mono {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      letter-spacing: 4px;
+      color: #ffa040;
+    }
+
+    /* === SECTION TITLE === */
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--orange);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, var(--border-orange), transparent);
+    }
+
+    /* === PAGE HEADER === */
+    .page-header {
+      margin-bottom: 28px;
+    }
+    .page-title {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: 1px;
+      line-height: 1;
+    }
+    .page-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* === BADGE === */
+    .badge {
+      padding: 3px 10px;
+      border-radius: 50px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .badge-orange { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(255,102,0,0.3); }
+    .badge-blue { background: var(--blue-dim); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    .badge-green { background: var(--green-dim); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-red { background: var(--red-dim); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-yellow { background: var(--yellow-dim); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-muted { background: rgba(255,255,255,0.06); color: var(--text-muted); border: 1px solid var(--border); }
+    .badge-scrap { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.4); }
+
+    /* === TABLE === */
+    .premium-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .premium-table thead tr { background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border-orange); }
+    .premium-table th {
+      padding: 12px 14px;
+      text-align: left;
+      color: var(--orange);
+      font-weight: 700;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      white-space: nowrap;
+      font-family: var(--font-display);
+    }
+    .premium-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s ease;
+    }
+    .premium-table tbody tr:hover { background: rgba(255,102,0,0.04); }
+    .premium-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+    .premium-table tbody tr:nth-child(even):hover { background: rgba(255,102,0,0.04); }
+    .premium-table td { padding: 10px 14px; color: var(--text-secondary); vertical-align: middle; }
+
+    /* === DISTRIBUTION BAR === */
+    .dist-bar {
+      height: 8px;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      gap: 2px;
+    }
+    .dist-bar-seg {
+      border-radius: 4px;
+      transition: all 0.3s ease;
+    }
+
+    /* === LOGIN SCREEN === */
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: radial-gradient(ellipse 800px 600px at 30% 40%, rgba(255,102,0,0.08), transparent 60%);
+    }
+    .login-card {
+      background: rgba(13,17,32,0.95);
+      border: 1px solid rgba(255,102,0,0.3);
+      border-radius: 24px;
+      padding: 40px 36px;
+      width: 380px;
+      max-width: 95vw;
+      box-shadow: 0 24px 80px rgba(255,102,0,0.12), 0 0 0 1px rgba(255,255,255,0.05);
+      backdrop-filter: blur(20px);
+    }
+
+    /* === TOAST === */
+    .toast {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 9999;
+      padding: 14px 20px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 14px;
+      min-width: 220px;
+      text-align: center;
+      backdrop-filter: blur(12px);
+      animation: slideIn 0.3s ease;
+    }
+    .toast.success { background: rgba(16,185,129,0.9); color: white; border: 1px solid rgba(16,185,129,0.5); box-shadow: 0 8px 32px rgba(16,185,129,0.3); }
+    .toast.error { background: rgba(239,68,68,0.9); color: white; border: 1px solid rgba(239,68,68,0.5); box-shadow: 0 8px 32px rgba(239,68,68,0.3); }
+    @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* === STATUS DOT === */
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100% { box-shadow: 0 0 6px var(--green); } 50% { box-shadow: 0 0 14px var(--green); } }
+
+    /* === MODAL === */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 10500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+    .modal-card {
+      background: rgba(13,17,32,0.98);
+      border: 1px solid rgba(255,102,0,0.3);
+      border-radius: 24px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* === EDIT FORM GRID === */
+    .edit-form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px 20px;
+    }
+    .edit-form-label {
+      font-size: 9px;
+      color: var(--orange);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 5px;
+      font-weight: 700;
+      font-family: var(--font-display);
+    }
+    .edit-form-input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,102,0,0.25);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: var(--radius-xs);
+      font-size: 12px;
+      outline: none;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+    .edit-form-input:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px var(--orange-dim);
+    }
+
+    /* === PARKING GRID === */
+    .parking-slot {
+      flex: 1 1 0;
+      min-width: 0;
+      height: 36px;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .parking-slot:hover { transform: scale(1.08); z-index: 2; }
+
+    /* === QUICK ACTIONS === */
+    .quick-action {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .quick-action:hover {
+      background: rgba(255,102,0,0.1);
+      border-color: rgba(255,102,0,0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(255,102,0,0.15);
+    }
+
+    /* === RESPONSIVE === */
+    @media (max-width: 768px) {
+      :root { --sidebar-width: 0px; }
+      .sidebar { display: none; }
+      .main-content { margin-left: 0; }
+      .content-area { padding: 16px; }
+    }
+
   </style>
 </head>
 <body>
@@ -434,7 +963,7 @@ function App() {
     if (!hasParking) {
       return (
         <input type="text" value={fd['parking_spot']||''} onChange={e=>onChangeFn('parking_spot',e.target.value)}
-          style={{width:'100%',boxSizing:'border-box',background:'#0b0d12',border:'1.5px solid #555',color:'#888',padding:'5px 8px',borderRadius:5,fontSize:12,outline:'none'}}
+          className='edit-form-input' style={{opacity:0.5}}
           placeholder="N/A"/>
       );
     }
@@ -446,7 +975,7 @@ function App() {
       : available;
     return (
       <select value={currentSpot} onChange={e=>onChangeFn('parking_spot',e.target.value)}
-        style={{width:'100%',boxSizing:'border-box',background:'#0b0d12',border:'1.5px solid #00bcd4',color:'#fff',padding:'5px 8px',borderRadius:5,fontSize:12,outline:'none'}}>
+        className='edit-form-input' style={{cursor:'pointer',borderColor:'var(--cyan)'}}>
         <option value="">-- No Spot --</option>
         {options.map(s=>(
           <option key={s} value={s}>{s}</option>
@@ -460,10 +989,10 @@ function App() {
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:'8px 14px'}}>
       {Object.entries(fieldLabels).map(([key,label]) => (
         <div key={key}>
-          <div style={{fontSize:9,color:'#ff5500',textTransform:'uppercase',letterSpacing:1.5,marginBottom:3}}>{label}</div>
+          <div style={{fontSize:9,color:'var(--orange)',textTransform:'uppercase',letterSpacing:1.5,marginBottom:3}}>{label}</div>
           {key==='location' ? (
             <select value={fd[key]||''} onChange={e=>handleVehicleFormChangeWithParkingReset(key,e.target.value)}
-              style={{width:'100%',boxSizing:'border-box',background:'#0b0d12',border:'1.5px solid #ff5500',color:'#fff',padding:'5px 8px',borderRadius:5,fontSize:12,outline:'none'}}>
+              style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:'1px solid var(--border-orange)',color:'#fff',padding:'5px 8px',borderRadius:5,fontSize:12,outline:'none'}}>
               <option value="">Select</option>
               {LOCATION_OPTIONS.map(loc=><option key={loc} value={loc}>{loc}</option>)}
             </select>
@@ -471,10 +1000,10 @@ function App() {
             <ParkingSpotDropdown fd={fd} onChangeFn={handleVehicleFormChange} excludeId={editingVehicleId}/>
           ) : key==='date' ? (
             <input type="date" value={fd[key]||''} onChange={e=>handleVehicleFormChange(key,e.target.value)}
-              style={{width:'100%',boxSizing:'border-box',background:'#0b0d12',border:'1.5px solid #ff5500',color:'#fff',padding:'5px 8px',borderRadius:5,fontSize:12,outline:'none'}}/>
+              style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:'1px solid var(--border-orange)',color:'#fff',padding:'5px 8px',borderRadius:5,fontSize:12,outline:'none'}}/>
           ) : (
             <input type="text" value={fd[key]||''} onChange={e=>handleVehicleFormChange(key,e.target.value)}
-              style={{width:'100%',boxSizing:'border-box',background:'#0b0d12',border:'1.5px solid #ff5500',color:'#fff',padding:'5px 8px',borderRadius:5,fontSize:12,outline:'none',fontFamily:key==='chassis_number'||key==='engine_number'?'monospace':'inherit'}}/>
+              style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:'1px solid var(--border-orange)',color:'#fff',padding:'5px 8px',borderRadius:5,fontSize:12,outline:'none',fontFamily:key==='chassis_number'||key==='engine_number'?'monospace':'inherit'}}/>
           )}
         </div>
       ))}
@@ -709,85 +1238,105 @@ function App() {
 
   if (!currentUser) {
     return (
-      <div style={{minHeight:'100vh',background:'#0b0d12',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Barlow','Segoe UI',sans-serif"}}>
-        <div style={{background:'#111520',border:'2px solid #ff5500',borderRadius:14,padding:'36px 32px',width:340,maxWidth:'95vw',boxShadow:'0 8px 40px rgba(255,85,0,0.2)'}}>
-          <div style={{textAlign:'center',marginBottom:24}}>
-            <div style={{margin:'0 auto 18px',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <div style={{position:'relative',display:'inline-block'}}>
-                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMjAgNzAiPgogIDxyZWN0IHdpZHRoPSIyMjAiIGhlaWdodD0iNzAiIGZpbGw9IiNGRjU1MDAiIHJ4PSI1Ii8+CiAgPHRleHQgeD0iMTEwIiB5PSI1MiIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLEltcGFjdCxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iOTAwIiBmb250LXNpemU9IjQ2IiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBsZXR0ZXItc3BhY2luZz0iNCI+S1RNPC90ZXh0Pgo8L3N2Zz4=" style={{width:140,height:44,objectFit:'contain',display:'block',borderRadius:6,boxShadow:'0 4px 18px rgba(255,85,0,0.35)'}}/></div></div>
-            <div style={{fontSize:18,fontWeight:900,color:'#fff',textTransform:'uppercase',letterSpacing:.5}}>Vehicle <span style={{color:'#ff5500'}}>Tracking</span> System</div>
-            <div style={{fontSize:10,color:'#556',letterSpacing:2,textTransform:'uppercase',marginTop:4}}>R&D Department · Bajaj Auto Ltd.</div>
+      <div className="login-container">
+        <div className="login-card">
+          <div style={{textAlign:'center',marginBottom:32}}>
+            {/* KTM Logo */}
+            <div style={{display:'inline-flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#cc4400,#ff6600)',borderRadius:16,padding:'12px 24px',marginBottom:20,boxShadow:'0 8px 32px rgba(255,102,0,0.4)'}}>
+              <span style={{fontFamily:"'Rajdhani','Barlow Condensed',sans-serif",fontWeight:900,fontSize:32,color:'white',letterSpacing:6}}>KTM</span>
+            </div>
+            <div style={{fontFamily:"var(--font-display)",fontSize:22,fontWeight:700,color:'var(--text-primary)',textTransform:'uppercase',letterSpacing:2}}>
+              Vehicle <span style={{color:'var(--orange)'}}>Tracking</span>
+            </div>
+            <div style={{fontSize:11,color:'var(--text-muted)',letterSpacing:3,textTransform:'uppercase',marginTop:6}}>R&D Department · Bajaj Auto Ltd.</div>
           </div>
-          <div style={{marginBottom:14}}>
-            <div style={{fontSize:10,color:'#ff5500',fontWeight:700,textTransform:'uppercase',letterSpacing:1.5,marginBottom:6}}>Login As</div>
+
+          <div style={{marginBottom:20}}>
+            <div className="section-title" style={{marginBottom:12}}>Login As</div>
             <div style={{display:'flex',gap:8}}>
-              {['admin','viewer'].map(r=>(<button key={r} onClick={()=>{setLoginRole(r);setLoginError('');setLoginPassword('');}} style={{flex:1,padding:'8px',borderRadius:6,border:'1.5px solid',cursor:'pointer',fontWeight:700,fontSize:12,background:loginRole===r?'#ff5500':'transparent',borderColor:loginRole===r?'#ff5500':'#333',color:loginRole===r?'#fff':'#888',textTransform:'capitalize'}}>{r==='admin'?'🔑 Admin':'👁 Viewer'}</button>))}
+              {['admin','viewer'].map(r=>(
+                <button key={r} onClick={()=>{setLoginRole(r);setLoginError('');setLoginPassword('');}}
+                  style={{flex:1,padding:'10px',borderRadius:50,border:'1px solid',cursor:'pointer',fontWeight:700,fontSize:12,fontFamily:'var(--font-display)',letterSpacing:1,textTransform:'uppercase',transition:'all 0.2s',
+                    background:loginRole===r?'linear-gradient(135deg,#cc4400,var(--orange))':'transparent',
+                    borderColor:loginRole===r?'var(--orange)':'rgba(255,255,255,0.1)',
+                    color:loginRole===r?'#fff':'var(--text-muted)',
+                    boxShadow:loginRole===r?'0 4px 16px var(--orange-glow)':'none'
+                  }}>{r==='admin'?'🔑 Admin':'👁 Viewer'}</button>
+              ))}
             </div>
           </div>
-          <div style={{marginBottom:14}}>
-            <div style={{fontSize:10,color:'#ff5500',fontWeight:700,textTransform:'uppercase',letterSpacing:1.5,marginBottom:6}}>Password</div>
-            <input type="password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleLogin()} placeholder="Enter password"
-              style={{width:'100%',boxSizing:'border-box',background:'#0b0d12',border:'1.5px solid #2a2f40',borderRadius:6,padding:'9px 12px',color:'#fff',fontSize:14,outline:'none'}}
-              onFocus={e=>e.target.style.borderColor='#ff5500'} onBlur={e=>e.target.style.borderColor='#2a2f40'}/>
+
+          <div style={{marginBottom:20}}>
+            <div className="section-title" style={{marginBottom:12}}>Password</div>
+            <input type="password" value={loginPassword}
+              onChange={e=>setLoginPassword(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&handleLogin()}
+              placeholder="Enter password"
+              className="input-field"
+              style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',padding:'12px 16px',color:'var(--text-primary)',fontSize:14,outline:'none',width:'100%',boxSizing:'border-box'}}
+              onFocus={e=>{e.target.style.borderColor='var(--orange)';e.target.style.boxShadow='0 0 0 3px rgba(255,102,0,0.15)';}}
+              onBlur={e=>{e.target.style.borderColor='rgba(255,255,255,0.1)';e.target.style.boxShadow='none';}}/>
           </div>
-          {loginError && <div style={{background:'rgba(192,57,43,0.18)',border:'1px solid #c0392b',color:'#ff8888',padding:'7px 10px',borderRadius:5,fontSize:12,marginBottom:10}}>{loginError}</div>}
-          <button onClick={handleLogin} style={{width:'100%',background:'#ff5500',border:'none',color:'#fff',padding:'11px',borderRadius:7,cursor:'pointer',fontWeight:800,fontSize:14,letterSpacing:.5}}>LOGIN</button>
-          <div style={{marginTop:12,textAlign:'center'}}>
-            <button onClick={()=>{setShowChangePw(true);setChangePwStep('pin');setChangePwPin('');setChangePwPinError('');}} style={{background:'none',border:'none',color:'#556',fontSize:11,cursor:'pointer',textDecoration:'underline',letterSpacing:.5}}>🔐 Change Password (Admin only)</button>
+
+          {loginError && (
+            <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.4)',color:'#f87171',padding:'10px 14px',borderRadius:10,fontSize:12,marginBottom:16,textAlign:'center'}}>
+              {loginError}
+            </div>
+          )}
+
+          <button onClick={handleLogin} className="btn-primary" style={{width:'100%',padding:'13px',fontSize:15,borderRadius:12,marginBottom:20}}>
+            LOGIN →
+          </button>
+
+          <div style={{textAlign:'center',marginBottom:8}}>
+            <button onClick={()=>{setShowChangePw(true);setChangePwStep('pin');setChangePwPin('');setChangePwPinError('');}}
+              style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:11,cursor:'pointer',letterSpacing:0.5}}>
+              🔐 Change Password (Admin only)
+            </button>
           </div>
-          <div style={{marginTop:8,fontSize:10,color:'#334',textAlign:'center'}}>Admin can edit entries · Viewer has read-only access</div>
+          <div style={{fontSize:10,color:'var(--text-muted)',textAlign:'center',opacity:0.6}}>Admin can edit entries · Viewer has read-only access</div>
 
           {/* Change Password Modal */}
           {showChangePw && (
-            <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <div style={{background:'#111520',border:'2px solid #ff5500',borderRadius:14,padding:'28px',width:320,maxWidth:'95vw',boxShadow:'0 8px 40px rgba(255,85,0,0.25)'}}>
-                <div style={{fontSize:15,fontWeight:800,color:'#fff',marginBottom:18,textAlign:'center'}}>🔐 Change Password</div>
-
+            <div className="modal-overlay" style={{zIndex:9999}}>
+              <div className="modal-card" style={{width:340,maxWidth:'95vw',padding:'32px'}}>
+                <div style={{fontSize:16,fontWeight:800,color:'var(--text-primary)',marginBottom:20,textAlign:'center',fontFamily:'var(--font-display)',letterSpacing:1}}>🔐 CHANGE PASSWORD</div>
                 {changePwStep === 'pin' && (
                   <>
-                    <div style={{fontSize:10,color:'#ff5500',fontWeight:700,textTransform:'uppercase',letterSpacing:1.5,marginBottom:6}}>Enter Security PIN</div>
-                    <input type="password" value={changePwPin} onChange={e=>setChangePwPin(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleChangePwPinSubmit()} placeholder="Enter 4-digit PIN"
-                      style={{width:'100%',boxSizing:'border-box',background:'#0b0d12',border:'1.5px solid #2a2f40',borderRadius:6,padding:'9px 12px',color:'#fff',fontSize:16,outline:'none',letterSpacing:6,textAlign:'center',marginBottom:8}}
-                      onFocus={e=>e.target.style.borderColor='#ff5500'} onBlur={e=>e.target.style.borderColor='#2a2f40'}/>
-                    {changePwPinError && <div style={{color:'#ff8888',fontSize:11,marginBottom:8,textAlign:'center'}}>{changePwPinError}</div>}
+                    <div className="section-title" style={{marginBottom:10}}>Security PIN</div>
+                    <input type="password" value={changePwPin} onChange={e=>setChangePwPin(e.target.value)}
+                      onKeyDown={e=>e.key==='Enter'&&handleChangePwPinSubmit()} placeholder="Enter 4-digit PIN"
+                      style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'12px',color:'var(--text-primary)',fontSize:20,outline:'none',letterSpacing:8,textAlign:'center',marginBottom:10}}
+                      onFocus={e=>e.target.style.borderColor='var(--orange)'} onBlur={e=>e.target.style.borderColor='rgba(255,255,255,0.1)'}/>
+                    {changePwPinError && <div style={{color:'#f87171',fontSize:11,marginBottom:10,textAlign:'center'}}>{changePwPinError}</div>}
                     <div style={{display:'flex',gap:8,marginTop:4}}>
-                      <button onClick={handleChangePwPinSubmit} style={{flex:2,background:'#ff5500',border:'none',color:'#fff',padding:'9px',borderRadius:6,cursor:'pointer',fontWeight:700,fontSize:13}}>Verify PIN</button>
-                      <button onClick={closeChangePw} style={{flex:1,background:'#222',border:'1px solid #333',color:'#888',padding:'9px',borderRadius:6,cursor:'pointer',fontSize:13}}>Cancel</button>
+                      <button onClick={handleChangePwPinSubmit} className="btn-primary" style={{flex:2,padding:'10px',borderRadius:10}}>Verify PIN</button>
+                      <button onClick={closeChangePw} className="btn-secondary" style={{flex:1,padding:'10px',borderRadius:10}}>Cancel</button>
                     </div>
-                    <div style={{marginTop:12,fontSize:10,color:'#445',textAlign:'center'}}>Only Admin is authorised to change passwords</div>
                   </>
                 )}
-
                 {changePwStep === 'form' && (
                   <>
-                    <div style={{fontSize:11,color:'#4caf50',marginBottom:14,textAlign:'center',fontWeight:600}}>✅ PIN Verified — Set New Passwords</div>
-
-                    <div style={{marginBottom:12}}>
-                      <div style={{fontSize:10,color:'#ff5500',fontWeight:700,textTransform:'uppercase',letterSpacing:1.5,marginBottom:5}}>🔑 New Admin Password</div>
-                      <input type="password" value={newAdminPw} onChange={e=>setNewAdminPw(e.target.value)} placeholder="New admin password (leave blank to keep)"
-                        style={{width:'100%',boxSizing:'border-box',background:'#0b0d12',border:'1.5px solid #2a2f40',borderRadius:5,padding:'8px 10px',color:'#fff',fontSize:13,outline:'none',marginBottom:5}}
-                        onFocus={e=>e.target.style.borderColor='#ff5500'} onBlur={e=>e.target.style.borderColor='#2a2f40'}/>
-                      <input type="password" value={confirmAdminPw} onChange={e=>setConfirmAdminPw(e.target.value)} placeholder="Confirm admin password"
-                        style={{width:'100%',boxSizing:'border-box',background:'#0b0d12',border:'1.5px solid #2a2f40',borderRadius:5,padding:'8px 10px',color:'#fff',fontSize:13,outline:'none'}}
-                        onFocus={e=>e.target.style.borderColor='#ff5500'} onBlur={e=>e.target.style.borderColor='#2a2f40'}/>
-                    </div>
-
+                    <div style={{fontSize:11,color:'var(--green)',marginBottom:16,textAlign:'center',fontWeight:600}}>✅ PIN Verified — Set New Passwords</div>
                     <div style={{marginBottom:14}}>
-                      <div style={{fontSize:10,color:'#4a9eff',fontWeight:700,textTransform:'uppercase',letterSpacing:1.5,marginBottom:5}}>👁 New Viewer Password</div>
-                      <input type="password" value={newViewerPw} onChange={e=>setNewViewerPw(e.target.value)} placeholder="New viewer password (leave blank to keep)"
-                        style={{width:'100%',boxSizing:'border-box',background:'#0b0d12',border:'1.5px solid #2a2f40',borderRadius:5,padding:'8px 10px',color:'#fff',fontSize:13,outline:'none',marginBottom:5}}
-                        onFocus={e=>e.target.style.borderColor='#4a9eff'} onBlur={e=>e.target.style.borderColor='#2a2f40'}/>
-                      <input type="password" value={confirmViewerPw} onChange={e=>setConfirmViewerPw(e.target.value)} placeholder="Confirm viewer password"
-                        style={{width:'100%',boxSizing:'border-box',background:'#0b0d12',border:'1.5px solid #2a2f40',borderRadius:5,padding:'8px 10px',color:'#fff',fontSize:13,outline:'none'}}
-                        onFocus={e=>e.target.style.borderColor='#4a9eff'} onBlur={e=>e.target.style.borderColor='#2a2f40'}/>
+                      <div className="section-title" style={{color:'var(--orange)',marginBottom:8}}>New Admin Password</div>
+                      <input type="password" value={newAdminPw} onChange={e=>setNewAdminPw(e.target.value)} placeholder="Leave blank to keep current"
+                        style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,102,0,0.2)',borderRadius:8,padding:'9px 12px',color:'var(--text-primary)',fontSize:13,outline:'none',marginBottom:6}}/>
+                      <input type="password" value={confirmAdminPw} onChange={e=>setConfirmAdminPw(e.target.value)} placeholder="Confirm admin password"
+                        style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,102,0,0.2)',borderRadius:8,padding:'9px 12px',color:'var(--text-primary)',fontSize:13,outline:'none'}}/>
                     </div>
-
-                    {changePwError && <div style={{background:'rgba(192,57,43,0.18)',border:'1px solid #c0392b',color:'#ff8888',padding:'7px 10px',borderRadius:5,fontSize:12,marginBottom:10,textAlign:'center'}}>{changePwError}</div>}
-                    {changePwSuccess && <div style={{background:'rgba(26,122,58,0.25)',border:'1px solid #1a7a3a',color:'#4caf50',padding:'7px 10px',borderRadius:5,fontSize:12,marginBottom:10,textAlign:'center',fontWeight:700}}>{changePwSuccess}</div>}
-
+                    <div style={{marginBottom:16}}>
+                      <div className="section-title" style={{color:'var(--blue)',marginBottom:8}}>New Viewer Password</div>
+                      <input type="password" value={newViewerPw} onChange={e=>setNewViewerPw(e.target.value)} placeholder="Leave blank to keep current"
+                        style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(59,130,246,0.2)',borderRadius:8,padding:'9px 12px',color:'var(--text-primary)',fontSize:13,outline:'none',marginBottom:6}}/>
+                      <input type="password" value={confirmViewerPw} onChange={e=>setConfirmViewerPw(e.target.value)} placeholder="Confirm viewer password"
+                        style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(59,130,246,0.2)',borderRadius:8,padding:'9px 12px',color:'var(--text-primary)',fontSize:13,outline:'none'}}/>
+                    </div>
+                    {changePwError && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.4)',color:'#f87171',padding:'8px 12px',borderRadius:8,fontSize:12,marginBottom:10,textAlign:'center'}}>{changePwError}</div>}
+                    {changePwSuccess && <div style={{background:'rgba(16,185,129,0.1)',border:'1px solid rgba(16,185,129,0.4)',color:'#34d399',padding:'8px 12px',borderRadius:8,fontSize:12,marginBottom:10,textAlign:'center',fontWeight:700}}>{changePwSuccess}</div>}
                     <div style={{display:'flex',gap:8}}>
-                      <button onClick={handleChangePwSave} style={{flex:2,background:'#1a7a3a',border:'none',color:'#fff',padding:'9px',borderRadius:6,cursor:'pointer',fontWeight:700,fontSize:13}}>💾 Save Passwords</button>
-                      <button onClick={closeChangePw} style={{flex:1,background:'#222',border:'1px solid #333',color:'#888',padding:'9px',borderRadius:6,cursor:'pointer',fontSize:13}}>Cancel</button>
+                      <button onClick={handleChangePwSave} style={{flex:2,background:'var(--green)',border:'none',color:'#fff',padding:'10px',borderRadius:10,cursor:'pointer',fontWeight:700,fontSize:13}}>💾 Save Passwords</button>
+                      <button onClick={closeChangePw} className="btn-secondary" style={{flex:1,padding:'10px',borderRadius:10}}>Cancel</button>
                     </div>
                   </>
                 )}
@@ -799,143 +1348,181 @@ function App() {
     );
   }
 
+  // Sidebar menu definition for premium layout
+  const sidebarItems = [
+    {id:'track', label:'Track Vehicles', icon:'🔍'},
+    {id:'summary', label:'Dept Summary', icon:'📊'},
+    {id:'models', label:'Model & Batch', icon:'🏍'},
+    {id:'va_dept', label:'VA Summary', icon:'🏢'},
+    {id:'va_parking', label:'VA Parking', icon:'🅿️'},
+    {id:'add', label:'Add Vehicle', icon:'➕'},
+    {id:'export', label:'Export Data', icon:'⬇️'},
+  ];
+
+  const pageTitles = {
+    track: { title: 'Fleet Overview', sub: 'Real-time insights into your vehicle fleet' },
+    summary: { title: 'Department Summary', sub: 'Capacity and occupancy across all departments' },
+    models: { title: 'Model & Batch', sub: 'Fleet breakdown by model and batch type' },
+    va_dept: { title: 'VA Team Summary', sub: 'Vehicle distribution for VA team' },
+    va_parking: { title: 'VA Store Parking', sub: 'Parking slot allocation and availability' },
+    add: { title: 'Add Vehicle', sub: 'Register a new vehicle to the fleet' },
+    export: { title: 'Export Data', sub: 'Download and import vehicle records' },
+  };
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-IN', {weekday:'short', day:'2-digit', month:'short', year:'numeric'});
+  const timeStr = now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+
   return (
-    <div style={{minHeight:'100vh',background:'#0b0d12',color:'#e8e8e8',fontFamily:"'Barlow','Segoe UI',sans-serif"}}>
+    <div style={{fontFamily:'var(--font-body)',minHeight:'100vh'}}>
+      {/* Toast */}
       {toast && (
-        <div style={{position:'fixed',top:20,right:20,zIndex:9999,background:toast.type==='error'?'#c0392b':'#1a7a3a',color:'#fff',padding:'12px 22px',borderRadius:8,fontWeight:600,boxShadow:'0 4px 24px rgba(0,0,0,0.5)',fontSize:14,minWidth:200,textAlign:'center'}}>
+        <div className={`toast ${toast.type==='error'?'error':'success'}`}>
           {toast.msg}
         </div>
       )}
 
       {/* Notify Modal — SMS + WhatsApp buttons */}
       {notifyModal && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:10000,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
-          <div style={{background:'#111520',border:'2px solid #ff5500',borderRadius:14,padding:'28px 24px',maxWidth:360,width:'100%',boxShadow:'0 8px 40px rgba(255,85,0,0.25)'}}>
-            <div style={{fontSize:16,fontWeight:800,color:'#ff5500',marginBottom:6,textAlign:'center'}}>📍 Location Changed</div>
-            <div style={{fontSize:12,color:'#aaa',textAlign:'center',marginBottom:18,lineHeight:1.6}}>
-              <span style={{fontFamily:'monospace',color:'#f90',fontWeight:700}}>{notifyModal.chassis}</span><br/>
-              <span style={{color:'#778'}}>{notifyModal.from}</span> <span style={{color:'#ff5500'}}>→</span> <span style={{color:'#7ab'}}>{notifyModal.to}</span>
+        <div className="modal-overlay" style={{zIndex:10000}}>
+          <div className="modal-card" style={{width:360,maxWidth:'95vw',padding:'32px'}}>
+            <div style={{fontSize:18,fontWeight:800,color:'var(--orange)',marginBottom:8,textAlign:'center',fontFamily:'var(--font-display)',letterSpacing:1}}>📍 LOCATION CHANGED</div>
+            <div style={{background:'rgba(255,255,255,0.04)',border:'1px solid var(--border)',borderRadius:12,padding:'16px',textAlign:'center',marginBottom:20}}>
+              <div style={{fontFamily:'var(--font-mono)',color:'#ffa040',fontWeight:700,fontSize:15,marginBottom:8}}>{notifyModal.chassis}</div>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,fontSize:13}}>
+                <span style={{color:'var(--text-muted)',background:'rgba(255,255,255,0.05)',padding:'4px 12px',borderRadius:6}}>{notifyModal.from}</span>
+                <span style={{color:'var(--orange)',fontSize:18}}>→</span>
+                <span style={{color:'var(--cyan)',background:'rgba(6,182,212,0.1)',padding:'4px 12px',borderRadius:6,border:'1px solid rgba(6,182,212,0.3)'}}>{notifyModal.to}</span>
+              </div>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
-              <a href={notifyModal.smsUrl}
-                style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,background:'#1a3a5a',border:'1.5px solid #2a5080',color:'#fff',padding:'11px',borderRadius:8,textDecoration:'none',fontWeight:700,fontSize:14}}>
+              <a href={notifyModal.smsUrl} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,background:'rgba(59,130,246,0.15)',border:'1px solid rgba(59,130,246,0.4)',color:'#60a5fa',padding:'12px',borderRadius:12,textDecoration:'none',fontWeight:700,fontSize:14,transition:'all 0.2s'}}>
                 📱 Send SMS
               </a>
-              <a href={notifyModal.waUrl} target="_blank" rel="noopener noreferrer"
-                style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,background:'#1a5c2a',border:'1.5px solid #25a244',color:'#fff',padding:'11px',borderRadius:8,textDecoration:'none',fontWeight:700,fontSize:14}}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              <a href={notifyModal.waUrl} target="_blank" rel="noopener noreferrer" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,background:'rgba(16,185,129,0.15)',border:'1px solid rgba(16,185,129,0.4)',color:'#34d399',padding:'12px',borderRadius:12,textDecoration:'none',fontWeight:700,fontSize:14}}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                 Send WhatsApp
               </a>
             </div>
-            <button onClick={()=>setNotifyModal(null)}
-              style={{width:'100%',background:'#1e2535',border:'1px solid #333',color:'#888',padding:'9px',borderRadius:7,cursor:'pointer',fontSize:13,fontWeight:600}}>
-              ✕ Close
-            </button>
+            <button onClick={()=>setNotifyModal(null)} className="btn-secondary" style={{width:'100%',padding:'10px',borderRadius:10}}>✕ Close</button>
           </div>
         </div>
       )}
 
       {/* Import Preview Modal */}
       {importModal && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.8)',zIndex:10001,display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto'}}>
-          <div style={{background:'#111520',border:'2px solid #5a1a8a',borderRadius:14,padding:'24px',maxWidth:500,width:'100%',boxShadow:'0 8px 40px rgba(90,26,138,0.3)',maxHeight:'90vh',overflowY:'auto'}}>
-            <div style={{fontSize:16,fontWeight:800,color:'#b57bff',marginBottom:4,textAlign:'center'}}>📥 Import Preview</div>
-            <div style={{fontSize:11,color:'#667',textAlign:'center',marginBottom:18}}>Review before importing. Only NEW chassis numbers will be added.</div>
-
-            {/* Stats row */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16}}>
-              <div style={{background:'#0a2010',border:'1.5px solid #1a7a3a',borderRadius:7,padding:'10px',textAlign:'center'}}>
-                <div style={{fontSize:22,fontWeight:900,color:'#4caf50'}}>{importModal.added.length}</div>
-                <div style={{fontSize:10,color:'#4a8',textTransform:'uppercase',letterSpacing:1}}>New Vehicles to Add</div>
+        <div className="modal-overlay" style={{zIndex:10001,overflowY:'auto'}}>
+          <div className="modal-card" style={{width:500,maxWidth:'95vw',maxHeight:'90vh',overflowY:'auto',padding:'28px'}}>
+            <div style={{fontSize:16,fontWeight:800,color:'#b57bff',marginBottom:4,textAlign:'center',fontFamily:'var(--font-display)',letterSpacing:1}}>📥 IMPORT PREVIEW</div>
+            <div style={{fontSize:11,color:'var(--text-muted)',textAlign:'center',marginBottom:20}}>Only NEW chassis numbers will be added.</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:18}}>
+              <div style={{background:'rgba(16,185,129,0.08)',border:'1px solid rgba(16,185,129,0.3)',borderRadius:12,padding:'14px',textAlign:'center'}}>
+                <div style={{fontSize:24,fontWeight:900,color:'var(--green)'}}>{importModal.added.length}</div>
+                <div style={{fontSize:10,color:'rgba(52,211,153,0.7)',textTransform:'uppercase',letterSpacing:1,marginTop:2}}>New Vehicles to Add</div>
               </div>
-              <div style={{background:'#201010',border:'1.5px solid #7a1a1a',borderRadius:7,padding:'10px',textAlign:'center'}}>
-                <div style={{fontSize:22,fontWeight:900,color:'#ff6b6b'}}>{importModal.skipped.length}</div>
-                <div style={{fontSize:10,color:'#a44',textTransform:'uppercase',letterSpacing:1}}>Skipped (Duplicates)</div>
+              <div style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:12,padding:'14px',textAlign:'center'}}>
+                <div style={{fontSize:24,fontWeight:900,color:'var(--red)'}}>{importModal.skipped.length}</div>
+                <div style={{fontSize:10,color:'rgba(248,113,113,0.7)',textTransform:'uppercase',letterSpacing:1,marginTop:2}}>Skipped (Duplicates)</div>
               </div>
             </div>
-
-            {/* Added preview */}
             {importModal.added.length > 0 && (
-              <div style={{marginBottom:12}}>
-                <div style={{fontSize:10,color:'#4caf50',fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:6}}>✅ Will Be Added ({importModal.added.length})</div>
-                <div style={{maxHeight:160,overflowY:'auto',borderRadius:6,border:'1px solid #1e2535'}}>
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:10,color:'var(--green)',fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:8}}>✅ Will Be Added ({importModal.added.length})</div>
+                <div style={{maxHeight:160,overflowY:'auto',borderRadius:8,border:'1px solid var(--border)'}}>
                   {importModal.added.map((v,i)=>(
-                    <div key={i} style={{padding:'6px 10px',borderBottom:'1px solid #1a1f30',background:i%2===0?'#0f1117':'#111520',display:'flex',gap:8,alignItems:'center'}}>
-                      <span style={{color:'#f90',fontFamily:'monospace',fontSize:11,fontWeight:700,minWidth:120}}>{v.chassis_number}</span>
-                      <span style={{color:'#aaa',fontSize:10,flex:1}}>{v.model_name||'—'}</span>
-                      <span style={{color:'#7ab',fontSize:10}}>{v.location||'—'}</span>
+                    <div key={i} style={{padding:'8px 12px',borderBottom:'1px solid var(--border)',background:i%2===0?'transparent':'rgba(255,255,255,0.02)',display:'flex',gap:8,alignItems:'center'}}>
+                      <span style={{color:'#ffa040',fontFamily:'var(--font-mono)',fontSize:11,fontWeight:700,minWidth:120}}>{v.chassis_number}</span>
+                      <span style={{color:'var(--text-muted)',fontSize:10,flex:1}}>{v.model_name||'—'}</span>
+                      <span style={{color:'var(--cyan)',fontSize:10}}>{v.location||'—'}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
-            {/* Skipped preview */}
             {importModal.skipped.length > 0 && (
-              <div style={{marginBottom:16}}>
-                <div style={{fontSize:10,color:'#ff6b6b',fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:6}}>⏭ Skipped ({importModal.skipped.length})</div>
-                <div style={{maxHeight:100,overflowY:'auto',borderRadius:6,border:'1px solid #1e2535'}}>
+              <div style={{marginBottom:18}}>
+                <div style={{fontSize:10,color:'var(--red)',fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:8}}>⏭ Skipped ({importModal.skipped.length})</div>
+                <div style={{maxHeight:100,overflowY:'auto',borderRadius:8,border:'1px solid var(--border)'}}>
                   {importModal.skipped.map((s,i)=>(
-                    <div key={i} style={{padding:'5px 10px',borderBottom:'1px solid #1a1f30',background:i%2===0?'#0f1117':'#111520',display:'flex',gap:8,alignItems:'center'}}>
-                      <span style={{color:'#f90',fontFamily:'monospace',fontSize:10,minWidth:120}}>{s.chassis}</span>
-                      <span style={{color:'#664',fontSize:10}}>{s.reason}</span>
+                    <div key={i} style={{padding:'6px 12px',borderBottom:'1px solid var(--border)',background:i%2===0?'transparent':'rgba(255,255,255,0.02)',display:'flex',gap:8,alignItems:'center'}}>
+                      <span style={{color:'#ffa040',fontFamily:'var(--font-mono)',fontSize:10,minWidth:120}}>{s.chassis}</span>
+                      <span style={{color:'var(--text-muted)',fontSize:10}}>{s.reason}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
             {importModal.added.length === 0 && (
-              <div style={{textAlign:'center',padding:'16px',color:'#556',fontSize:13,marginBottom:12}}>
+              <div style={{textAlign:'center',padding:'20px',color:'var(--text-muted)',fontSize:13,marginBottom:14,border:'1px dashed var(--border)',borderRadius:10}}>
                 No new vehicles to import — all chassis numbers already exist.
               </div>
             )}
-
             <div style={{display:'flex',gap:8}}>
               {importModal.added.length > 0 && (
-                <button onClick={confirmImport}
-                  style={{flex:1,background:'#4a1a7a',border:'1.5px solid #7a3aaa',color:'#fff',padding:'11px',borderRadius:7,cursor:'pointer',fontWeight:800,fontSize:13}}>
-                  ✅ Import {importModal.added.length} Vehicle{importModal.added.length!==1?'s':''}
+                <button onClick={confirmImport} style={{flex:1,background:'linear-gradient(135deg,#5a1a8a,#7a3aaa)',border:'1px solid rgba(139,92,246,0.4)',color:'#fff',padding:'12px',borderRadius:10,cursor:'pointer',fontWeight:800,fontSize:13,fontFamily:'var(--font-display)',letterSpacing:1}}>
+                  ✅ IMPORT {importModal.added.length} VEHICLE{importModal.added.length!==1?'S':''}
                 </button>
               )}
-              <button onClick={()=>setImportModal(null)}
-                style={{flex:importModal.added.length?0:1,background:'#1e2535',border:'1px solid #333',color:'#888',padding:'11px',borderRadius:7,cursor:'pointer',fontSize:13,fontWeight:600,minWidth:80}}>
+              <button onClick={()=>setImportModal(null)} className="btn-secondary" style={{padding:'12px',borderRadius:10,minWidth:90}}>
                 ✕ Cancel
               </button>
             </div>
           </div>
         </div>
       )}
-
       {/* Edit Vehicle Popup Modal */}
       {editPopupOpen && editingVehicleId !== null && (()=>{
         const orig = vehicles.find(v=>v.id===editingVehicleId);
         const fd = vehicleForm;
         return (
-          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.82)',zIndex:10500,display:'flex',alignItems:'center',justifyContent:'center',padding:12,overflowY:'auto'}}>
-            <div style={{background:'#111520',border:'2px solid #ff5500',borderRadius:14,width:'100%',maxWidth:820,boxShadow:'0 8px 48px rgba(255,85,0,0.22)',display:'flex',flexDirection:'column',maxHeight:'94vh',overflow:'hidden'}}>
-              {/* Popup Header */}
-              <div style={{padding:'13px 18px',borderBottom:'2px solid #ff5500',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,background:'linear-gradient(90deg,#1a0800,#0f1117)'}}>
-                <div style={{display:'flex',alignItems:'center',gap:10}}>
-                  <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MCA1MCI+CiAgPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjRkY1NTAwIiByeD0iMyIvPgogIDx0ZXh0IHg9IjQwIiB5PSIzOCIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLEltcGFjdCxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iOTAwIiBmb250LXNpemU9IjMwIiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBsZXR0ZXItc3BhY2luZz0iMiI+S1RNPC90ZXh0Pgo8L3N2Zz4=" style={{width:44,height:28,objectFit:'contain',flexShrink:0}}/>
+          <div className="modal-overlay">
+            <div className="modal-card" style={{width:'100%',maxWidth:860}}>
+              {/* Modal Header */}
+              <div style={{padding:'18px 24px',borderBottom:'1px solid var(--border-orange)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,background:'linear-gradient(135deg,rgba(255,102,0,0.08),transparent)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:12}}>
+                  <div style={{background:'linear-gradient(135deg,#cc4400,var(--orange))',borderRadius:10,padding:'8px 16px',boxShadow:'0 4px 12px var(--orange-glow)'}}>
+                    <span style={{fontFamily:'var(--font-display)',fontWeight:900,fontSize:18,color:'white',letterSpacing:4}}>KTM</span>
+                  </div>
                   <div>
-                    <div style={{fontSize:13,fontWeight:800,color:'#ff5500',letterSpacing:.5}}>✏️ Edit Vehicle</div>
-                    <div style={{fontSize:10,color:'#556',marginTop:1}}>
-                      <span style={{color:'#f90',fontFamily:'monospace',fontWeight:700}}>{orig?.chassis_number||'—'}</span>
-                      {orig?.model_name && <span style={{color:'#aaa',marginLeft:8}}>{orig.model_name}</span>}
+                    <div style={{fontSize:14,fontWeight:800,color:'var(--orange)',letterSpacing:0.5,fontFamily:'var(--font-display)'}}>✏️ Edit Vehicle</div>
+                    <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>
+                      <span style={{fontFamily:'var(--font-mono)',color:'#ffa040',fontWeight:700}}>{orig?.chassis_number||'—'}</span>
+                      {orig?.model_name && <span style={{color:'var(--text-secondary)',marginLeft:8}}>{orig.model_name}</span>}
                     </div>
                   </div>
                 </div>
-                <button onClick={()=>{setEditPopupOpen(false);setEditingVehicleId(null);setVehicleForm({});}} style={{background:'#2a1010',border:'1px solid #5a1010',color:'#ff6b6b',width:30,height:30,borderRadius:'50%',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontWeight:700}}>✕</button>
+                <button onClick={()=>{setEditPopupOpen(false);setEditingVehicleId(null);setVehicleForm({});}}
+                  style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',color:'#f87171',width:32,height:32,borderRadius:'50%',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontWeight:700,transition:'all 0.2s'}}>✕</button>
               </div>
-              {/* Popup Body */}
-              <div style={{padding:'16px 18px',overflowY:'auto',flex:1}}>
-                <EditForm fd={fd}/>
+              {/* Modal Body */}
+              <div style={{padding:'20px 24px',overflowY:'auto',flex:1}}>
+                <div className="edit-form-grid">
+                  {Object.entries(fieldLabels).map(([key,label]) => (
+                    <div key={key}>
+                      <div className="edit-form-label">{label}</div>
+                      {key==='location' ? (
+                        <select value={fd[key]||''} onChange={e=>handleVehicleFormChangeWithParkingReset(key,e.target.value)}
+                          className="edit-form-input" style={{cursor:'pointer',borderColor:'rgba(255,102,0,0.4)'}}>
+                          <option value="">Select</option>
+                          {LOCATION_OPTIONS.map(loc=><option key={loc} value={loc}>{loc}</option>)}
+                        </select>
+                      ) : key==='parking_spot' ? (
+                        <ParkingSpotDropdown fd={fd} onChangeFn={handleVehicleFormChange} excludeId={editingVehicleId}/>
+                      ) : key==='date' ? (
+                        <input type="date" value={fd[key]||''} onChange={e=>handleVehicleFormChange(key,e.target.value)} className="edit-form-input"/>
+                      ) : (
+                        <input type="text" value={fd[key]||''} onChange={e=>handleVehicleFormChange(key,e.target.value)}
+                          className="edit-form-input"
+                          style={{fontFamily:key==='chassis_number'||key==='engine_number'?'var(--font-mono)':'inherit'}}/>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-              {/* Popup Footer */}
-              <div style={{padding:'12px 18px',borderTop:'1.5px solid #1e2535',display:'flex',gap:8,justifyContent:'flex-end',flexShrink:0,background:'#0f1117'}}>
-                <button onClick={()=>{setEditPopupOpen(false);setEditingVehicleId(null);setVehicleForm({});}} style={{background:'#1e2230',border:'1px solid #2a3040',color:'#888',padding:'8px 18px',borderRadius:7,cursor:'pointer',fontSize:13,fontWeight:600}}>✕ Cancel</button>
-                <button onClick={handleSaveVehicle} style={{background:'linear-gradient(90deg,#cc4400,#ff5500)',border:'none',color:'#fff',padding:'8px 24px',borderRadius:7,cursor:'pointer',fontWeight:800,fontSize:13,letterSpacing:.5,boxShadow:'0 3px 14px rgba(255,85,0,0.3)'}}>✓ Save & Close</button>
+              {/* Modal Footer */}
+              <div style={{padding:'16px 24px',borderTop:'1px solid var(--border)',display:'flex',gap:10,justifyContent:'flex-end',flexShrink:0}}>
+                <button onClick={()=>{setEditPopupOpen(false);setEditingVehicleId(null);setVehicleForm({});}} className="btn-secondary" style={{padding:'10px 20px',borderRadius:10}}>✕ Cancel</button>
+                <button onClick={handleSaveVehicle} className="btn-primary" style={{padding:'10px 28px',borderRadius:10}}>✓ Save Changes</button>
               </div>
             </div>
           </div>
@@ -944,97 +1531,180 @@ function App() {
 
       {/* Switch Role Modal */}
       {showSwitchModal && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:9000,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:'#111520',border:'2px solid #ff5500',borderRadius:12,padding:'28px 28px',width:300,maxWidth:'95vw'}}>
-            <div style={{fontSize:14,fontWeight:800,color:'#fff',marginBottom:16}}>🔄 Switch Role</div>
-            <div style={{display:'flex',gap:8,marginBottom:14}}>
-              {['admin','viewer'].map(r=>(<button key={r} onClick={()=>{setSwitchRole(r);setSwitchPassword('');setSwitchError('');}} style={{flex:1,padding:'7px',borderRadius:5,border:'1.5px solid',cursor:'pointer',fontWeight:700,fontSize:12,background:switchRole===r?'#ff5500':'transparent',borderColor:switchRole===r?'#ff5500':'#333',color:switchRole===r?'#fff':'#888',textTransform:'capitalize'}}>{r==='admin'?'🔑 Admin':'👁 Viewer'}</button>))}
+        <div className="modal-overlay" style={{zIndex:9000}}>
+          <div className="modal-card" style={{width:320,maxWidth:'95vw',padding:'28px'}}>
+            <div style={{fontSize:16,fontWeight:800,color:'var(--text-primary)',marginBottom:20,fontFamily:'var(--font-display)',letterSpacing:1,textAlign:'center'}}>🔄 SWITCH ROLE</div>
+            <div style={{display:'flex',gap:8,marginBottom:16}}>
+              {['admin','viewer'].map(r=>(
+                <button key={r} onClick={()=>{setSwitchRole(r);setSwitchPassword('');setSwitchError('');}}
+                  style={{flex:1,padding:'9px',borderRadius:50,border:'1px solid',cursor:'pointer',fontWeight:700,fontSize:12,fontFamily:'var(--font-display)',letterSpacing:0.5,textTransform:'uppercase',transition:'all 0.2s',
+                    background:switchRole===r?'linear-gradient(135deg,#cc4400,var(--orange))':'transparent',
+                    borderColor:switchRole===r?'var(--orange)':'var(--border)',
+                    color:switchRole===r?'#fff':'var(--text-muted)',
+                    boxShadow:switchRole===r?'0 4px 12px var(--orange-glow)':'none'
+                  }}>{r==='admin'?'🔑 Admin':'👁 Viewer'}</button>
+              ))}
             </div>
-            <input type="password" value={switchPassword} onChange={e=>setSwitchPassword(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSwitch()} placeholder="Password"
-              style={{width:'100%',boxSizing:'border-box',background:'#0b0d12',border:'1.5px solid #2a2f40',borderRadius:5,padding:'8px 11px',color:'#fff',fontSize:13,outline:'none',marginBottom:switchError?8:14}}/>
-            {switchError && <div style={{color:'#ff8888',fontSize:11,marginBottom:10}}>{switchError}</div>}
+            <input type="password" value={switchPassword} onChange={e=>setSwitchPassword(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&handleSwitch()} placeholder="Enter password"
+              style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:'1px solid var(--border)',borderRadius:10,padding:'11px 14px',color:'var(--text-primary)',fontSize:13,outline:'none',marginBottom:switchError?10:16,transition:'border-color 0.2s'}}
+              onFocus={e=>e.target.style.borderColor='var(--orange)'} onBlur={e=>e.target.style.borderColor='var(--border)'}/>
+            {switchError && <div style={{color:'#f87171',fontSize:11,marginBottom:12,textAlign:'center'}}>{switchError}</div>}
             <div style={{display:'flex',gap:8}}>
-              <button onClick={handleSwitch} style={{flex:2,background:'#ff5500',border:'none',color:'#fff',padding:'8px',borderRadius:6,cursor:'pointer',fontWeight:700,fontSize:13}}>Switch</button>
-              <button onClick={()=>{setShowSwitchModal(false);setSwitchPassword('');setSwitchError('');}} style={{flex:1,background:'#222',border:'1px solid #333',color:'#888',padding:'8px',borderRadius:6,cursor:'pointer',fontSize:13}}>Cancel</button>
+              <button onClick={handleSwitch} className="btn-primary" style={{flex:2,padding:'10px',borderRadius:10,fontSize:13}}>Switch</button>
+              <button onClick={()=>{setShowSwitchModal(false);setSwitchPassword('');setSwitchError('');}} className="btn-secondary" style={{flex:1,padding:'10px',borderRadius:10}}>Cancel</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <div style={{background:'linear-gradient(135deg,#1a0500 0%,#0f0d14 55%,#0b0d12 100%)',borderBottom:'3px solid #ff5500',padding:'11px 14px',display:'flex',alignItems:'center',gap:12}}>
-        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MCA1MCI+CiAgPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjRkY1NTAwIiByeD0iMyIvPgogIDx0ZXh0IHg9IjQwIiB5PSIzOCIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLEltcGFjdCxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iOTAwIiBmb250LXNpemU9IjMwIiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBsZXR0ZXItc3BhY2luZz0iMiI+S1RNPC90ZXh0Pgo8L3N2Zz4=" style={{width:72,height:36,objectFit:'contain',flexShrink:0}}/>
-        <div style={{flex:1}}>
-          <div style={{fontSize:16,fontWeight:900,color:'#fff',letterSpacing:.5,textTransform:'uppercase',lineHeight:1.1}}>Vehicle <span style={{color:'#ff5500'}}>Tracking</span> System</div>
-          <div style={{fontSize:9,color:'#445',letterSpacing:2,textTransform:'uppercase',marginTop:1}}>R&D Department · Bajaj Auto Ltd.</div>
-        </div>
-        <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-          <div style={{background:isAdmin?'rgba(255,85,0,0.15)':'rgba(74,158,255,0.12)',border:`1px solid ${isAdmin?'#ff5500':'#4a9eff'}`,borderRadius:20,padding:'4px 10px',fontSize:11,fontWeight:700,color:isAdmin?'#ff8844':'#7abfff'}}>
-            {isAdmin?'🔑 ADMIN':'👁 VIEWER'}
+      {/* ========= HEADER ========= */}
+      <header className="app-header">
+        {/* Logo */}
+        <div style={{display:'flex',alignItems:'center',gap:14,flexShrink:0}}>
+          <div style={{background:'linear-gradient(135deg,#cc4400,var(--orange))',borderRadius:12,padding:'8px 18px',boxShadow:'0 4px 20px var(--orange-glow)',flexShrink:0}}>
+            <span style={{fontFamily:'var(--font-display)',fontWeight:900,fontSize:24,color:'white',letterSpacing:5}}>KTM</span>
           </div>
-          <button onClick={()=>{setShowSwitchModal(true);setSwitchRole(isAdmin?'viewer':'admin');setSwitchPassword('');setSwitchError('');}} style={{background:'#1e2230',border:'1px solid #2a3040',color:'#aaa',padding:'4px 10px',borderRadius:20,cursor:'pointer',fontSize:11,fontWeight:600}}>Switch</button>
+          <div>
+            <div style={{fontFamily:'var(--font-display)',fontSize:18,fontWeight:700,color:'var(--text-primary)',letterSpacing:2,textTransform:'uppercase',lineHeight:1}}>
+              Vehicle <span style={{color:'var(--orange)'}}>Tracking</span> System
+            </div>
+            <div style={{fontSize:10,color:'var(--text-muted)',letterSpacing:2,textTransform:'uppercase',marginTop:4}}>R&D Department · Bajaj Auto Ltd.</div>
+          </div>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div style={{display:'flex',borderBottom:'2px solid #1e2230',background:'#0f1117',padding:'0 10px',overflowX:'auto'}}>
-        {tabs.map(t => (
-          <button key={t.id} onClick={()=>setActiveTab(t.id)}
-            style={{background:'none',border:'none',padding:'9px 11px',cursor:'pointer',fontSize:11,fontWeight:600,color:activeTab===t.id?'#ff5500':'#555',whiteSpace:'nowrap',flexShrink:0,borderBottom:activeTab===t.id?'2px solid #ff5500':'2px solid transparent',marginBottom:-2,transition:'all .15s'}}>
-            {t.label}
-          </button>
+        {/* Spacer */}
+        <div style={{flex:1}}/>
+
+        {/* Date/Time pill */}
+        <div style={{background:'rgba(255,255,255,0.04)',border:'1px solid var(--border)',borderRadius:50,padding:'6px 14px',fontSize:11,color:'var(--text-muted)',letterSpacing:0.5,display:'flex',alignItems:'center',gap:6}}>
+          <span style={{color:'var(--green)',fontSize:8}}>●</span>
+          <span>{dateStr}</span>
+          <span style={{color:'var(--orange)',fontWeight:700}}>{timeStr}</span>
+        </div>
+
+        {/* Role Badge */}
+        <div className={`badge ${isAdmin?'badge-orange':'badge-blue'}`} style={{fontSize:11,padding:'6px 14px'}}>
+          {isAdmin?'🔑 ADMIN':'👁 VIEWER'}
+        </div>
+
+        {/* Switch Button */}
+        <button onClick={()=>{setShowSwitchModal(true);setSwitchRole(isAdmin?'viewer':'admin');setSwitchPassword('');setSwitchError('');}}
+          className="btn-secondary" style={{padding:'6px 14px',borderRadius:50,fontSize:11}}>
+          Switch Role
+        </button>
+      </header>
+
+      {/* ========= SIDEBAR ========= */}
+      <nav className="sidebar">
+        <div style={{padding:'8px 12px 16px',marginBottom:8}}>
+          <div style={{fontSize:9,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:2,fontWeight:700}}>Navigation</div>
+        </div>
+        {sidebarItems.map(item => (
+          <div key={item.id}
+            className={`sidebar-item ${activeTab===item.id?'active':''}`}
+            onClick={()=>setActiveTab(item.id)}>
+            <span className="icon">{item.icon}</span>
+            <span>{item.label}</span>
+          </div>
         ))}
-      </div>
 
-      <div style={{padding:'14px',boxSizing:'border-box'}}>
+        {/* System Status */}
+        <div style={{marginTop:'auto',paddingTop:20}}>
+          <div style={{background:'rgba(16,185,129,0.06)',border:'1px solid rgba(16,185,129,0.2)',borderRadius:12,padding:'12px 14px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+              <div className="status-dot"></div>
+              <span style={{fontSize:11,fontWeight:700,color:'var(--green)'}}>System Operational</span>
+            </div>
+            <div style={{fontSize:9,color:'var(--text-muted)'}}>Last updated: Just now</div>
+          </div>
+        </div>
+      </nav>
+
+      {/* ========= MAIN CONTENT ========= */}
+      <main className="main-content">
+        <div className="content-area">
+          {/* Page Header */}
+          <div className="page-header">
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+              <div>
+                <h1 className="page-title">{pageTitles[activeTab]?.title}</h1>
+                <p className="page-subtitle">{pageTitles[activeTab]?.sub}</p>
+              </div>
+              {/* Quick Actions */}
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {['track','add','export'].filter(t=>t!==activeTab).slice(0,2).map(t=>(
+                  <button key={t} onClick={()=>setActiveTab(t)} className="btn-secondary" style={{padding:'8px 16px',borderRadius:10,fontSize:12}}>
+                    {sidebarItems.find(s=>s.id===t)?.icon} {sidebarItems.find(s=>s.id===t)?.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
 
         {/* TRACK TAB */}
         {activeTab==='track' && (
-          <div>
-            {/* Stats grid */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:7,marginBottom:9}}>
-              {(()=>{
-                const activeVehicles = vehicles.filter(v => !isScrapped(v));
-                const va=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='VA').length;
-                const eee=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='EEE').length;
-                const cal=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='CAL').length;
-                const svc=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='Service').length;
-                const uniq=[...new Set(activeVehicles.map(v=>v.model_name).filter(Boolean))].length;
-                return [
-                  {label:'Total Fleet',value:activeVehicles.length,color:'#ff5500',icon:'🏍'},
-                  {label:'VA Team',value:va,color:'#4a9eff',icon:'🔧'},
-                  {label:'EEE Team',value:eee,color:'#9a7fff',icon:'⚡'},
-                  {label:'CAL Team',value:cal,color:'#1a9a5a',icon:'📐'},
-                  {label:'Service',value:svc,color:'#e8a000',icon:'🛠'},
-                  {label:'Models',value:uniq,color:'#e06060',icon:'📋'},
-                ].map(s=>(
-                  <div key={s.label} style={{background:'linear-gradient(135deg,#111520,#151a28)',border:'1.5px solid #1e2535',borderRadius:7,padding:'8px 9px',position:'relative',overflow:'hidden'}}>
-                    <div style={{position:'absolute',top:5,right:6,fontSize:13,opacity:0.12}}>{s.icon}</div>
-                    <div style={{fontSize:8,color:'#556',textTransform:'uppercase',letterSpacing:1.3,marginBottom:2,fontWeight:700}}>{s.label}</div>
-                    <div style={{fontSize:19,fontWeight:900,color:s.color,lineHeight:1}}>{s.value}</div>
-                  </div>
-                ));
-              })()}
-            </div>
+          <div style={{maxWidth:1200}}>
+            {/* Stats Cards */}
+            {(()=>{
+              const activeVehicles = vehicles.filter(v => !isScrapped(v));
+              const va=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='VA').length;
+              const eee=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='EEE').length;
+              const cal=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='CAL').length;
+              const svc=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='Service').length;
+              const uniq=[...new Set(activeVehicles.map(v=>v.model_name).filter(Boolean))].length;
+              const cards = [
+                {label:'Total Fleet',value:activeVehicles.length,color:'var(--orange)',cls:'orange',icon:'🏍',sub:'Active vehicles'},
+                {label:'VA Team',value:va,color:'var(--blue)',cls:'blue',icon:'🔧',sub:'Validation & Analysis'},
+                {label:'EEE Team',value:eee,color:'var(--purple)',cls:'purple',icon:'⚡',sub:'Electrical & Electronics'},
+                {label:'CAL Team',value:cal,color:'var(--green)',cls:'green',icon:'📐',sub:'Calibration'},
+                {label:'Service',value:svc,color:'var(--yellow)',cls:'yellow',icon:'🛠',sub:'Service Department'},
+                {label:'Models',value:uniq,color:'var(--red)',cls:'red',icon:'📋',sub:'Unique Models'},
+              ];
+              return (
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:14,marginBottom:20}}>
+                  {cards.map(s=>(
+                    <div key={s.label} className={`stat-card ${s.cls}`}>
+                      <div style={{position:'absolute',top:14,right:14,fontSize:22,opacity:0.15}}>{s.icon}</div>
+                      <div style={{fontSize:9,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:2,marginBottom:8,fontWeight:700,fontFamily:'var(--font-display)'}}>{s.label}</div>
+                      <div style={{fontSize:36,fontWeight:900,color:s.color,lineHeight:1,fontFamily:'var(--font-display)'}}>{s.value}</div>
+                      <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:6}}>{s.sub}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
-            {/* Batch strip */}
+            {/* Fleet Distribution Bar */}
             {(()=>{
               const batches=['Production','Pilot 2','Pilot','Pre Pilot','Proto 2','Proto 1','Mule'];
-              const colors=['#1a7a3a','#2255aa','#1a5080','#7a3a8a','#8a4a00','#6a1a1a','#444'];
+              const colors=['#10b981','#3b82f6','#1d4ed8','#8b5cf6','#f59e0b','#ef4444','#64748b'];
+              const glows=['rgba(16,185,129,0.6)','rgba(59,130,246,0.6)','rgba(29,78,216,0.6)','rgba(139,92,246,0.6)','rgba(245,158,11,0.6)','rgba(239,68,68,0.6)','rgba(100,116,139,0.6)'];
               const activeV = vehicles.filter(v => !isScrapped(v));
               const counts=batches.map(b=>activeV.filter(v=>v.batch===b).length);
+              const total = counts.reduce((a,b)=>a+b,0);
               return (
-                <div style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:7,padding:'7px 11px',marginBottom:9}}>
-                  <div style={{fontSize:8,color:'#556',textTransform:'uppercase',letterSpacing:1.3,marginBottom:4,fontWeight:700}}>Fleet by Batch</div>
-                  <div style={{display:'flex',gap:2,borderRadius:3,overflow:'hidden',height:7,marginBottom:5}}>
-                    {batches.map((b,i)=>counts[i]>0&&<div key={b} style={{flex:counts[i],background:colors[i]}} title={b+': '+counts[i]}/>)}
+                <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'18px 20px',marginBottom:20}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+                    <div>
+                      <div style={{fontFamily:'var(--font-display)',fontSize:13,fontWeight:700,color:'var(--text-primary)',letterSpacing:1,textTransform:'uppercase'}}>Fleet Distribution by Batch</div>
+                      <div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>{total} active vehicles across {batches.filter((_,i)=>counts[i]>0).length} batch types</div>
+                    </div>
                   </div>
-                  <div style={{display:'flex',gap:9,flexWrap:'wrap'}}>
+                  {/* Segmented progress bar */}
+                  <div style={{display:'flex',gap:3,borderRadius:10,overflow:'hidden',height:10,marginBottom:14,background:'rgba(255,255,255,0.05)'}}>
                     {batches.map((b,i)=>counts[i]>0&&(
-                      <div key={b} style={{display:'flex',alignItems:'center',gap:3}}>
-                        <div style={{width:6,height:6,borderRadius:1,background:colors[i]}}/>
-                        <span style={{fontSize:9,color:'#666'}}>{b}</span>
-                        <span style={{fontSize:10,fontWeight:700,color:'#bbb'}}>{counts[i]}</span>
+                      <div key={b} style={{flex:counts[i],background:colors[i],borderRadius:4,transition:'all 0.3s',cursor:'default',boxShadow:`0 0 8px ${glows[i]}`}} title={`${b}: ${counts[i]}`}/>
+                    ))}
+                  </div>
+                  {/* Legend */}
+                  <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+                    {batches.map((b,i)=>counts[i]>0&&(
+                      <div key={b} style={{display:'flex',alignItems:'center',gap:6}}>
+                        <div style={{width:10,height:10,borderRadius:3,background:colors[i],boxShadow:`0 0 6px ${glows[i]}`}}/>
+                        <span style={{fontSize:10,color:'var(--text-muted)'}}>{b}</span>
+                        <span style={{fontSize:11,fontWeight:800,color:'var(--text-secondary)',fontFamily:'var(--font-display)'}}>{counts[i]}</span>
+                        <span style={{fontSize:9,color:'var(--text-muted)'}}>{((counts[i]/total)*100).toFixed(0)}%</span>
                       </div>
                     ))}
                   </div>
@@ -1043,12 +1713,18 @@ function App() {
             })()}
 
             {/* Search panel */}
-            <div style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:9,padding:'11px 13px'}}>
-              <div style={{fontSize:9,color:'#ff5500',fontWeight:800,textTransform:'uppercase',letterSpacing:2,marginBottom:9}}>🔍 Find a Vehicle</div>
-              <div style={{display:'flex',gap:5,marginBottom:9,flexWrap:'wrap'}}>
+            <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'22px',marginBottom:20}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16}}>
+                <div style={{fontSize:18}}>🔍</div>
+                <div>
+                  <div style={{fontFamily:'var(--font-display)',fontSize:14,fontWeight:700,color:'var(--text-primary)',letterSpacing:1,textTransform:'uppercase'}}>Find a Vehicle</div>
+                  <div style={{fontSize:10,color:'var(--text-muted)',marginTop:1}}>Search by chassis, VMS number, model, project, or location</div>
+                </div>
+              </div>
+              <div style={{display:'flex',gap:6,marginBottom:18,flexWrap:'wrap'}}>
                 {[{id:'chassis',label:'Chassis'},{id:'vms',label:'VMS No'},{id:'model',label:'Model'},{id:'project',label:'Project'},{id:'location',label:'Location'}].map(m=>(
                   <button key={m.id} onClick={()=>{setSearchMode(m.id);setSearchQ('');setVmsQ(['','','','','','','','']);setSearched(false);setSearchResult(null);}}
-                    style={{padding:'5px 11px',borderRadius:20,border:'1.5px solid',cursor:'pointer',fontSize:11,fontWeight:700,background:searchMode===m.id?'#ff5500':'transparent',borderColor:searchMode===m.id?'#ff5500':'#2a2f40',color:searchMode===m.id?'#fff':'#666',whiteSpace:'nowrap'}}>
+                    className={`search-pill ${searchMode===m.id?'active':'inactive'}`}>
                     {m.label}
                   </button>
                 ))}
@@ -1056,20 +1732,21 @@ function App() {
 
               {searchMode==='chassis' && (
                 <div>
-                  <div style={{display:'flex',gap:7,alignItems:'center'}}>
+                  <div style={{display:'flex',gap:10,alignItems:'center'}}>
                     <input value={searchQ} onChange={e=>setSearchQ(e.target.value.toUpperCase())} onKeyDown={e=>e.key==='Enter'&&handleSearch()}
                       placeholder="e.g. 45370" maxLength={5}
-                      style={{flex:1,maxWidth:190,background:'#0b0d12',border:'2px solid #2a2f40',borderRadius:7,padding:'9px 12px',color:'#ff9900',fontSize:19,fontFamily:'monospace',letterSpacing:5,outline:'none',boxSizing:'border-box'}}
-                      onFocus={e=>e.target.style.borderColor='#ff5500'} onBlur={e=>e.target.style.borderColor='#2a2f40'}/>
-                    <button onClick={handleSearch} style={{background:'#ff5500',border:'none',borderRadius:7,padding:'9px 18px',color:'#fff',fontWeight:800,fontSize:13,cursor:'pointer',whiteSpace:'nowrap'}}>SEARCH</button>
+                      style={{flex:1,maxWidth:220,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,102,0,0.3)',borderRadius:12,padding:'12px 18px',color:'#ffa040',fontSize:22,fontFamily:'var(--font-mono)',letterSpacing:6,outline:'none',boxSizing:'border-box',transition:'all 0.2s'}}
+                      onFocus={e=>{e.target.style.borderColor='var(--orange)';e.target.style.boxShadow='0 0 0 3px rgba(255,102,0,0.15)';}}
+                      onBlur={e=>{e.target.style.borderColor='rgba(255,102,0,0.3)';e.target.style.boxShadow='none';}}/>
+                    <button onClick={handleSearch} className="btn-primary" style={{padding:'12px 24px',fontSize:14,borderRadius:12}}>SEARCH</button>
                   </div>
-                  <div style={{marginTop:4,fontSize:9,color:'#445'}}>Last 5 digits of chassis number</div>
+                  <div style={{marginTop:8,fontSize:10,color:'var(--text-muted)'}}>💡 Searches last 5 digits of chassis number</div>
                 </div>
               )}
               {searchMode==='vms' && (
                 <div>
-                  <div style={{display:'flex',gap:7,alignItems:'center'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:2,background:'#0b0d12',border:'2px solid #2a2f40',borderRadius:7,padding:'7px 10px',flex:1,maxWidth:260}}
+                  <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:2,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,102,0,0.3)',borderRadius:12,padding:'10px 14px',flex:1,maxWidth:300}}
                       onFocus={()=>{}} id="vms-box">
                       {[0,1,2,3].map(i=>(
                         <input key={i} id={`vms-${i}`} value={vmsQ[i]} maxLength={1}
@@ -1085,10 +1762,10 @@ function App() {
                             if(e.key==='Backspace'&&!vmsQ[i]&&i>0){const nq=[...vmsQ];nq[i-1]='';setVmsQ(nq);document.getElementById(`vms-${i-1}`)?.focus();}
                             if(e.key==='Enter') handleSearch();
                           }}
-                          style={{width:22,textAlign:'center',background:'transparent',border:'none',color:'#ff9900',fontSize:18,fontFamily:'monospace',fontWeight:700,outline:'none',caretColor:'#ff5500'}}
+                          style={{width:24,textAlign:'center',background:'transparent',border:'none',color:'#ffa040',fontSize:20,fontFamily:'var(--font-mono)',fontWeight:700,outline:'none',caretColor:'var(--orange)'}}
                           placeholder="0"/>
                       ))}
-                      <span id="vms-dash" style={{color:'#ff5500',fontSize:20,fontWeight:900,margin:'0 2px',userSelect:'none'}}>-</span>
+                      <span id="vms-dash" style={{color:'var(--orange)',fontSize:22,fontWeight:900,margin:'0 3px',userSelect:'none'}}>-</span>
                       {[4,5,6,7].map(i=>(
                         <input key={i} id={`vms-${i}`} value={vmsQ[i]} maxLength={1}
                           inputMode="numeric" pattern="[0-9]"
@@ -1104,43 +1781,46 @@ function App() {
                             if(e.key==='Backspace'&&!vmsQ[i]&&i===4){const nq=[...vmsQ];nq[3]='';setVmsQ(nq);document.getElementById('vms-3')?.focus();}
                             if(e.key==='Enter') handleSearch();
                           }}
-                          style={{width:22,textAlign:'center',background:'transparent',border:'none',color:'#ff9900',fontSize:18,fontFamily:'monospace',fontWeight:700,outline:'none',caretColor:'#ff5500'}}
+                          style={{width:24,textAlign:'center',background:'transparent',border:'none',color:'#ffa040',fontSize:20,fontFamily:'var(--font-mono)',fontWeight:700,outline:'none',caretColor:'var(--orange)'}}
                           placeholder="0"/>
                       ))}
                     </div>
-                    <button onClick={handleSearch} style={{background:'#ff5500',border:'none',borderRadius:7,padding:'9px 18px',color:'#fff',fontWeight:800,fontSize:13,cursor:'pointer',whiteSpace:'nowrap'}}>SEARCH</button>
+                    <button onClick={handleSearch} className="btn-primary" style={{padding:'12px 24px',fontSize:14,borderRadius:12}}>SEARCH</button>
                   </div>
-                  <div style={{marginTop:4,fontSize:9,color:'#445'}}>Enter VMS No in format <span style={{color:'#ff5500',fontFamily:'monospace'}}>YYYY-NNNN</span> · All 8 digits required</div>
+                  <div style={{marginTop:8,fontSize:10,color:'var(--text-muted)'}}>Enter VMS No in format <span style={{color:'var(--orange)',fontFamily:'var(--font-mono)',fontWeight:700}}>YYYY-NNNN</span> · All 8 digits required</div>
                 </div>
               )}
               {searchMode==='model' && (
-                <div style={{display:'flex',gap:7}}>
+                <div style={{display:'flex',gap:10}}>
                   <select value={searchQ} onChange={e=>setSearchQ(e.target.value)}
-                    style={{flex:1,background:'#0b0d12',border:'2px solid #2a2f40',borderRadius:7,padding:'9px 11px',color:searchQ?'#e8e8e8':'#555',fontSize:13,outline:'none',cursor:'pointer'}}>
+                    style={{flex:1,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,102,0,0.3)',borderRadius:12,padding:'12px 16px',color:searchQ?'var(--text-primary)':'var(--text-muted)',fontSize:13,outline:'none',cursor:'pointer',transition:'all 0.2s'}}
+                    onFocus={e=>e.target.style.borderColor='var(--orange)'} onBlur={e=>e.target.style.borderColor='rgba(255,102,0,0.3)'}>
                     <option value="">— Select Model —</option>
                     {MODEL_OPTIONS.map(m=><option key={m} value={m}>{m}</option>)}
                   </select>
-                  <button onClick={()=>searchQ&&handleSearch()} style={{background:'#ff5500',border:'none',borderRadius:7,padding:'9px 18px',color:'#fff',fontWeight:800,fontSize:13,cursor:'pointer',whiteSpace:'nowrap'}}>SEARCH</button>
+                  <button onClick={()=>searchQ&&handleSearch()} className="btn-primary" style={{padding:'12px 24px',borderRadius:12}}>SEARCH</button>
                 </div>
               )}
               {searchMode==='project' && (
-                <div style={{display:'flex',gap:7}}>
+                <div style={{display:'flex',gap:10}}>
                   <select value={searchQ} onChange={e=>setSearchQ(e.target.value)}
-                    style={{flex:1,background:'#0b0d12',border:'2px solid #2a2f40',borderRadius:7,padding:'9px 11px',color:searchQ?'#e8e8e8':'#555',fontSize:13,outline:'none',cursor:'pointer'}}>
+                    style={{flex:1,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,102,0,0.3)',borderRadius:12,padding:'12px 16px',color:searchQ?'var(--text-primary)':'var(--text-muted)',fontSize:13,outline:'none',cursor:'pointer',transition:'all 0.2s'}}
+                    onFocus={e=>e.target.style.borderColor='var(--orange)'} onBlur={e=>e.target.style.borderColor='rgba(255,102,0,0.3)'}>
                     <option value="">— Select Project —</option>
                     {PROJECT_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
                   </select>
-                  <button onClick={()=>searchQ&&handleSearch()} style={{background:'#ff5500',border:'none',borderRadius:7,padding:'9px 18px',color:'#fff',fontWeight:800,fontSize:13,cursor:'pointer',whiteSpace:'nowrap'}}>SEARCH</button>
+                  <button onClick={()=>searchQ&&handleSearch()} className="btn-primary" style={{padding:'12px 24px',borderRadius:12}}>SEARCH</button>
                 </div>
               )}
               {searchMode==='location' && (
-                <div style={{display:'flex',gap:7}}>
+                <div style={{display:'flex',gap:10}}>
                   <select value={searchQ} onChange={e=>setSearchQ(e.target.value)}
-                    style={{flex:1,background:'#0b0d12',border:'2px solid #2a2f40',borderRadius:7,padding:'9px 11px',color:searchQ?'#e8e8e8':'#555',fontSize:13,outline:'none',cursor:'pointer'}}>
+                    style={{flex:1,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,102,0,0.3)',borderRadius:12,padding:'12px 16px',color:searchQ?'var(--text-primary)':'var(--text-muted)',fontSize:13,outline:'none',cursor:'pointer',transition:'all 0.2s'}}
+                    onFocus={e=>e.target.style.borderColor='var(--orange)'} onBlur={e=>e.target.style.borderColor='rgba(255,102,0,0.3)'}>
                     <option value="">— Select Location —</option>
                     {LOCATION_OPTIONS.map(loc=><option key={loc} value={loc}>{loc}</option>)}
                   </select>
-                  <button onClick={()=>searchQ&&handleSearch()} style={{background:'#ff5500',border:'none',borderRadius:7,padding:'9px 18px',color:'#fff',fontWeight:800,fontSize:13,cursor:'pointer',whiteSpace:'nowrap'}}>SEARCH</button>
+                  <button onClick={()=>searchQ&&handleSearch()} className="btn-primary" style={{padding:'12px 24px',borderRadius:12}}>SEARCH</button>
                 </div>
               )}
             </div>
@@ -1149,28 +1829,30 @@ function App() {
             {searched && searchResult && searchMode==='chassis' && searchResult.length===1 && (()=>{
               const v=editingVehicleId===searchResult[0].id?vehicleForm:searchResult[0];
               const isEd=editingVehicleId===searchResult[0].id;
+              const scrapped=isScrapped(searchResult[0]);
               return (
-              <div style={{background:'#111520',border:`1.5px solid ${isScrapped(searchResult[0])?'#8b2020':'#1e2535'}`,borderRadius:9,overflow:'hidden',marginTop:12}}>
-                <div style={{padding:'11px 15px',borderBottom:`2px solid ${isScrapped(searchResult[0])?'#e02020':'#ff5500'}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:7}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    <span style={{color:'#ff5500',fontWeight:800,fontSize:14}}>🏍 {searchResult[0].model_name||'Vehicle Found'}</span>
-                    {isScrapped(searchResult[0]) && <span style={{background:'#5a1a1a',color:'#ff6b6b',border:'1px solid #8b2020',padding:'2px 9px',borderRadius:4,fontWeight:700,fontSize:11}}>🔴 SCRAPPED</span>}
+              <div style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${scrapped?'rgba(239,68,68,0.4)':'var(--border-orange)'}`,borderRadius:'var(--radius)',overflow:'hidden',marginTop:16}}>
+                <div style={{padding:'16px 20px',borderBottom:`1px solid ${scrapped?'rgba(239,68,68,0.3)':'var(--border-orange)'}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,background:`linear-gradient(135deg,${scrapped?'rgba(239,68,68,0.06)':'rgba(255,102,0,0.06)'},transparent)`}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontSize:20}}>🏍</span>
+                    <span style={{fontFamily:'var(--font-display)',color:scrapped?'#f87171':'var(--orange)',fontWeight:800,fontSize:16,letterSpacing:0.5}}>{searchResult[0].model_name||'Vehicle Found'}</span>
+                    {scrapped && <span className="badge badge-red">🔴 SCRAPPED</span>}
                   </div>
-                  {!isEd&&isAdmin&&<button onClick={()=>handleEditVehicle(searchResult[0])} style={{background:'#1e2d45',border:'1px solid #2a4060',color:'#7ab',padding:'5px 13px',borderRadius:5,cursor:'pointer',fontSize:12,fontWeight:700}}>✏️ Edit All</button>}
-                  {isEd&&<div style={{display:'flex',gap:5}}>
-                    <button onClick={handleSaveVehicle} style={{background:'#1a7a3a',border:'none',color:'#fff',padding:'5px 13px',borderRadius:5,cursor:'pointer',fontWeight:700,fontSize:12}}>✓ Save</button>
-                    <button onClick={()=>{setEditingVehicleId(null);setVehicleForm({});}} style={{background:'#333',border:'1px solid #444',color:'#aaa',padding:'5px 9px',borderRadius:5,cursor:'pointer',fontSize:12}}>✕</button>
+                  {!isEd&&isAdmin&&<button onClick={()=>handleEditVehicle(searchResult[0])} className="btn-icon">✏️ Edit Vehicle</button>}
+                  {isEd&&<div style={{display:'flex',gap:8}}>
+                    <button onClick={handleSaveVehicle} className="btn-primary" style={{padding:'6px 16px',borderRadius:8,fontSize:12}}>✓ Save</button>
+                    <button onClick={()=>{setEditingVehicleId(null);setVehicleForm({});}} className="btn-secondary" style={{padding:'6px 10px',borderRadius:8,fontSize:12}}>✕</button>
                   </div>}
                 </div>
                 {isEd ? (
-                  <div style={{padding:'12px 15px'}}><EditForm fd={v}/></div>
+                  <div style={{padding:'20px'}}><EditForm fd={v}/></div>
                 ) : (
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))'}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))'}}>
                     {Object.entries(fieldLabels).map(([key,label],i)=>(
-                      <div key={key} style={{padding:'8px 14px',borderBottom:'1px solid #1a1f30',borderRight:i%2===0?'1px solid #1a1f30':'none'}}>
-                        <div style={{fontSize:8,color:'#556',textTransform:'uppercase',letterSpacing:1.3,marginBottom:2,fontWeight:700}}>{label}</div>
-                        <div style={{fontSize:12,color:key==='chassis_number'?'#f90':key==='location'?'#7ab':'#ddd',fontFamily:key==='chassis_number'||key==='engine_number'?'monospace':'inherit',fontWeight:key==='chassis_number'?700:400}}>
-                          {v[key]||<span style={{color:'#333'}}>—</span>}
+                      <div key={key} style={{padding:'12px 18px',borderBottom:'1px solid var(--border)',borderRight:'1px solid var(--border)'}}>
+                        <div style={{fontSize:8,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:2,marginBottom:4,fontWeight:700,fontFamily:'var(--font-display)'}}>{label}</div>
+                        <div style={{fontSize:13,color:key==='chassis_number'?'#ffa040':key==='location'?'var(--cyan)':'var(--text-secondary)',fontFamily:key==='chassis_number'||key==='engine_number'?'var(--font-mono)':'inherit',fontWeight:key==='chassis_number'?700:400}}>
+                          {v[key]||<span style={{color:'var(--text-muted)',opacity:0.5}}>—</span>}
                         </div>
                       </div>
                     ))}
@@ -1182,17 +1864,17 @@ function App() {
 
             {/* VMS result - table with all matching vehicles */}
             {searched && searchResult && searchMode==='vms' && (
-              <div style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:9,overflow:'hidden',marginTop:12}}>
-                <div style={{padding:'10px 15px',borderBottom:'2px solid #ff5500',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                  <span style={{color:'#ff5500',fontWeight:800,fontSize:13}}>🗂 VMS {vmsQ.slice(0,4).join('')}-{vmsQ.slice(4,8).join('')}</span>
-                  <span style={{color:'#666',fontSize:12}}>{searchResult.filter(v=>!isScrapped(v)).length} active · {searchResult.filter(v=>isScrapped(v)).length} scrapped</span>
+              <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',overflow:'hidden',marginTop:16}}>
+                <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border-orange)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'rgba(255,102,0,0.04)'}}>
+                  <span style={{color:'var(--orange)',fontWeight:800,fontSize:13,fontFamily:'var(--font-display)',letterSpacing:0.5}}>🗂 VMS {vmsQ.slice(0,4).join('')}-{vmsQ.slice(4,8).join('')}</span>
+                  <span style={{fontSize:11,color:'var(--text-muted)'}}>{searchResult.filter(v=>!isScrapped(v)).length} active · {searchResult.filter(v=>isScrapped(v)).length} scrapped</span>
                 </div>
                 <div style={{overflowX:'auto'}}>
-                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                  <table className='premium-table'>
                     <thead>
-                      <tr style={{background:'#0f1420'}}>
+                      <tr>
                         {['#','VMS No','Model','Batch','Chassis No','Location','Action'].map(h=>(
-                          <th key={h} style={{padding:'9px 11px',textAlign:'left',color:'#ff5500',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:1,whiteSpace:'nowrap'}}>{h}</th>
+                          <th key={h}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -1203,12 +1885,12 @@ function App() {
                         const scrapped=isScrapped(v);
                         return (
                         <React.Fragment key={v.id+'_vms_'+i}>
-                          <tr style={{background:isEd?'rgba(255,85,0,0.07)':scrapped?'rgba(80,20,20,0.35)':i%2===0?'#0f1117':'#111520',borderBottom:isEd?'none':'1px solid #1a1f30',opacity:scrapped?0.65:1}}>
+                          <tr style={{opacity:scrapped?0.6:1,background:isEd?'rgba(255,102,0,0.06)':scrapped?'rgba(239,68,68,0.05)':'inherit'}}>
                             <td style={{padding:'7px 11px',color:'#555',fontSize:11}}>{i+1}</td>
-                            <td style={{padding:'7px 11px',color:'#ff9900',fontFamily:'monospace',fontWeight:700,fontSize:11}}>{v.vms_no||'—'}</td>
+                            <td style={{color:'#ffa040',fontFamily:'var(--font-mono)',fontWeight:700}}>{v.vms_no||'—'}</td>
                             <td style={{padding:'7px 11px',color:'#ddd',fontWeight:600}}>{v.model_name||'—'}</td>
                             <td style={{padding:'7px 11px',color:'#aaa',fontSize:11}}>{v.batch||'—'}</td>
-                            <td style={{padding:'7px 11px',color:'#f90',fontFamily:'monospace',fontWeight:700,fontSize:11}}>{v.chassis_number||'—'}</td>
+                            <td style={{color:'#ffa040',fontFamily:'var(--font-mono)',fontWeight:700}}>{v.chassis_number||'—'}</td>
                             <td style={{padding:'7px 11px',fontSize:11}}>
                               {scrapped
                                 ? <span style={{background:'#5a1a1a',color:'#ff6b6b',border:'1px solid #8b2020',padding:'2px 7px',borderRadius:4,fontWeight:700,fontSize:10}}>🔴 {v.location}</span>
@@ -1217,11 +1899,11 @@ function App() {
                             </td>
                             <td style={{padding:'7px 11px'}}>
                               {!isEd?(
-                                isAdmin ? <button onClick={()=>handleEditVehicle(v)} style={{background:'#1e2d45',border:'1px solid #2a4060',color:'#7ab',padding:'3px 9px',borderRadius:4,cursor:'pointer',fontSize:11,fontWeight:700}}>✏️</button> : <span style={{color:'#334',fontSize:10}}>—</span>
+                                isAdmin ? <button onClick={()=>handleEditVehicle(v)} className='btn-icon' style={{padding:'4px 10px',fontSize:11}}>✏️</button> : <span style={{color:'#334',fontSize:10}}>—</span>
                               ):(
                                 <div style={{display:'flex',gap:4}}>
-                                  <button onClick={handleSaveVehicle} style={{background:'#1a7a3a',border:'none',color:'#fff',padding:'3px 9px',borderRadius:4,cursor:'pointer',fontWeight:700,fontSize:11}}>✓</button>
-                                  <button onClick={()=>{setEditingVehicleId(null);setVehicleForm({});}} style={{background:'#333',border:'1px solid #444',color:'#aaa',padding:'3px 7px',borderRadius:4,cursor:'pointer',fontSize:11}}>✕</button>
+                                  <button onClick={handleSaveVehicle} className='btn-primary' style={{padding:'4px 10px',borderRadius:6,fontSize:11}}>✓</button>
+                                  <button onClick={()=>{setEditingVehicleId(null);setVehicleForm({});}} className='btn-secondary' style={{padding:'4px 8px',borderRadius:6,fontSize:11}}>✕</button>
                                 </div>
                               )}
                             </td>
@@ -1244,17 +1926,17 @@ function App() {
 
             {/* Table results */}
             {searched && searchResult && (searchMode==='model'||searchMode==='project'||searchMode==='location') && (
-              <div style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:9,overflow:'hidden',marginTop:12}}>
-                <div style={{padding:'10px 15px',borderBottom:'2px solid #ff5500',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                  <span style={{color:'#ff5500',fontWeight:800,fontSize:13}}>{searchMode==='location'?'📍':'🏍'} {searchQ}</span>
-                  <span style={{color:'#666',fontSize:12}}>{searchResult.filter(v=>!isScrapped(v)).length} active · {searchResult.filter(v=>isScrapped(v)).length} scrapped</span>
+              <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',overflow:'hidden',marginTop:16}}>
+                <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border-orange)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'rgba(255,102,0,0.04)'}}>
+                  <span style={{color:'var(--orange)',fontWeight:800,fontSize:13,fontFamily:'var(--font-display)',letterSpacing:0.5}}>{searchMode==='location'?'📍':'🏍'} {searchQ}</span>
+                  <span style={{fontSize:11,color:'var(--text-muted)'}}>{searchResult.filter(v=>!isScrapped(v)).length} active · {searchResult.filter(v=>isScrapped(v)).length} scrapped</span>
                 </div>
                 <div style={{overflowX:'auto'}}>
-                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                  <table className='premium-table'>
                     <thead>
                       <tr style={{background:'#0f1420'}}>
                         {(searchMode==='model'?['#','VMS No','Batch','Chassis No','Location','Action']:['#','VMS No','Model','Batch','Chassis No','Location','Action']).map(h=>(
-                          <th key={h} style={{padding:'9px 11px',textAlign:'left',color:'#ff5500',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:1,whiteSpace:'nowrap'}}>{h}</th>
+                          <th key={h} style={{padding:'9px 11px',textAlign:'left',color:'var(--orange)',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:1,whiteSpace:'nowrap'}}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -1265,12 +1947,12 @@ function App() {
                         const scrapped=isScrapped(v);
                         return (
                         <React.Fragment key={v.id+'_'+i}>
-                          <tr style={{background:isEd?'rgba(255,85,0,0.07)':scrapped?'rgba(80,20,20,0.35)':i%2===0?'#0f1117':'#111520',borderBottom:isEd?'none':'1px solid #1a1f30',opacity:scrapped?0.65:1}}>
+                          <tr style={{opacity:scrapped?0.6:1,background:isEd?'rgba(255,102,0,0.06)':scrapped?'rgba(239,68,68,0.05)':'inherit'}}>
                             <td style={{padding:'7px 11px',color:'#555',fontSize:11}}>{i+1}</td>
-                            <td style={{padding:'7px 11px',color:'#777',fontSize:11}}>{v.vms_no||'—'}</td>
+                            <td style={{color:'var(--text-muted)',fontFamily:'var(--font-mono)',fontSize:11}}>{v.vms_no||'—'}</td>
                             {searchMode!=='model'&&<td style={{padding:'7px 11px',color:'#ddd',fontWeight:600}}>{v.model_name||'—'}</td>}
                             <td style={{padding:'7px 11px',color:'#aaa',fontSize:11}}>{v.batch||'—'}</td>
-                            <td style={{padding:'7px 11px',color:'#f90',fontFamily:'monospace',fontWeight:700,fontSize:11}}>{v.chassis_number||'—'}</td>
+                            <td style={{color:'#ffa040',fontFamily:'var(--font-mono)',fontWeight:700}}>{v.chassis_number||'—'}</td>
                             <td style={{padding:'7px 11px',fontSize:11}}>
                               {scrapped
                                 ? <span style={{background:'#5a1a1a',color:'#ff6b6b',border:'1px solid #8b2020',padding:'2px 7px',borderRadius:4,fontWeight:700,fontSize:10}}>🔴 {v.location}</span>
@@ -1279,11 +1961,11 @@ function App() {
                             </td>
                             <td style={{padding:'7px 11px'}}>
                               {!isEd?(
-                                isAdmin ? <button onClick={()=>handleEditVehicle(v)} style={{background:'#1e2d45',border:'1px solid #2a4060',color:'#7ab',padding:'3px 9px',borderRadius:4,cursor:'pointer',fontSize:11,fontWeight:700}}>✏️</button> : <span style={{color:'#334',fontSize:10}}>—</span>
+                                isAdmin ? <button onClick={()=>handleEditVehicle(v)} className='btn-icon' style={{padding:'4px 10px',fontSize:11}}>✏️</button> : <span style={{color:'#334',fontSize:10}}>—</span>
                               ):(
                                 <div style={{display:'flex',gap:4}}>
-                                  <button onClick={handleSaveVehicle} style={{background:'#1a7a3a',border:'none',color:'#fff',padding:'3px 9px',borderRadius:4,cursor:'pointer',fontWeight:700,fontSize:11}}>✓</button>
-                                  <button onClick={()=>{setEditingVehicleId(null);setVehicleForm({});}} style={{background:'#333',border:'1px solid #444',color:'#aaa',padding:'3px 7px',borderRadius:4,cursor:'pointer',fontSize:11}}>✕</button>
+                                  <button onClick={handleSaveVehicle} className='btn-primary' style={{padding:'4px 10px',borderRadius:6,fontSize:11}}>✓</button>
+                                  <button onClick={()=>{setEditingVehicleId(null);setVehicleForm({});}} className='btn-secondary' style={{padding:'4px 8px',borderRadius:6,fontSize:11}}>✕</button>
                                 </div>
                               )}
                             </td>
@@ -1316,40 +1998,40 @@ function App() {
 
         {/* DEPT SUMMARY TAB */}
         {activeTab==='summary' && (
-          <div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginBottom:16}}>
-              {[{label:'Total Vehicles',value:totalVehicles,color:'#ff5500'},{label:'Total Parking',value:totalCapacity,color:'#4a9eff'},{label:'Over Capacity',value:overCapacity,color:overCapacity>0?'#e02020':'#1a7a3a'},{label:'Departments',value:deptSummary.length,color:'#9a7fff'}].map(s=>(
-                <div key={s.label} style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:8,padding:'11px'}}>
-                  <div style={{fontSize:9,color:'#556',textTransform:'uppercase',letterSpacing:1.5,marginBottom:3,fontWeight:700}}>{s.label}</div>
-                  <div style={{fontSize:22,fontWeight:800,color:s.color}}>{s.value}</div>
+          <div style={{maxWidth:1200}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:14,marginBottom:24}}>
+              {[{label:'Total Vehicles',value:totalVehicles,cls:'orange'},{label:'Total Parking',value:totalCapacity,cls:'blue'},{label:'Over Capacity',value:overCapacity,cls:overCapacity>0?'red':'green'},{label:'Departments',value:deptSummary.length,cls:'purple'}].map(s=>(
+                <div key={s.label} className={`stat-card ${s.cls}`}>
+                  <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',textTransform:'uppercase',letterSpacing:2,marginBottom:6,fontWeight:700,fontFamily:'var(--font-display)'}}>{s.label}</div>
+                  <div style={{fontSize:32,fontWeight:900,color:s.cls==='orange'?'var(--orange)':s.cls==='blue'?'var(--blue)':s.cls==='red'?'var(--red)':s.cls==='green'?'var(--green)':'var(--purple)',fontFamily:'var(--font-display)'}}>{s.value}</div>
                 </div>
               ))}
             </div>
 
             <div style={{display:'flex',gap:8,marginBottom:11,alignItems:'center'}}>
               <select value={summaryFilter} onChange={e=>setSummaryFilter(e.target.value)}
-                style={{background:'#151820',border:'1.5px solid #2a2f40',borderRadius:6,padding:'8px 12px',color:summaryFilter?'#fff':'#666',fontSize:13,outline:'none',cursor:'pointer',minWidth:220}}>
+                style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,102,0,0.3)',borderRadius:10,padding:'10px 14px',color:summaryFilter?'var(--text-primary)':'var(--text-muted)',fontSize:13,outline:'none',cursor:'pointer',minWidth:240}}>
                 <option value="">— All Departments —</option>
                 {deptSummary.map(d=><option key={d.dept} value={d.dept}>{d.dept}</option>)}
               </select>
-              {summaryFilter&&<button onClick={()=>setSummaryFilter('')} style={{background:'#222',border:'1px solid #333',color:'#888',padding:'7px 11px',borderRadius:6,cursor:'pointer',fontSize:12}}>✕ Clear</button>}
+              {summaryFilter&&<button onClick={()=>setSummaryFilter('')} className='btn-secondary' style={{padding:'8px 14px',borderRadius:10}}>✕ Clear</button>}
             </div>
 
-            <div style={{overflowX:'auto',borderRadius:8,border:'1.5px solid #1e2535'}}>
-              <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+            <div style={{overflowX:'auto',borderRadius:'var(--radius)',border:'1px solid var(--border)'}}>
+              <table className='premium-table'>
                 <thead>
-                  <tr style={{background:'#0f1420',borderBottom:'2px solid #ff5500'}}>
+                  <tr>
                     {['#','Department','Vehicles','Capacity','Available','Status','Action'].map(h=>(
-                      <th key={h} style={{padding:'9px 11px',textAlign:'left',color:'#ff5500',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:1,whiteSpace:'nowrap'}}>{h}</th>
+                      <th key={h}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredSummary.map((row,i)=>(
-                    <tr key={row.dept} style={{background:row.available!==null&&row.available<0?'rgba(224,32,32,0.09)':i%2===0?'#0f1117':'#111520',borderBottom:'1px solid #1a1f30'}}>
-                      <td style={{padding:'8px 11px',color:'#444',fontSize:11}}>{i+1}</td>
-                      <td style={{padding:'8px 11px',fontWeight:600,color:'#ddd'}}>{row.dept}</td>
-                      <td style={{padding:'8px 11px',fontWeight:700,color:row.actual>0?'#fff':'#555',fontSize:14}}>{row.actual}</td>
+                    <tr key={row.dept} style={{background:row.available!==null&&row.available<0?'rgba(239,68,68,0.06)':'inherit'}}>
+                      <td style={{color:'var(--text-muted)',fontSize:11}}>{i+1}</td>
+                      <td style={{fontWeight:600,color:'var(--text-primary)'}}>{row.dept}</td>
+                      <td style={{fontWeight:800,fontSize:16,color:row.actual>0?'var(--orange)':'var(--text-muted)',fontFamily:'var(--font-display)'}}>{row.actual}</td>
                       <td style={{padding:'8px 11px'}}>
                         {editingCapacity===row.dept?(
                           <div style={{display:'flex',gap:4,alignItems:'center'}}>
@@ -1358,22 +2040,22 @@ function App() {
                                 if(e.key==='Enter'){const v=parseInt(capacityInput);if(!isNaN(v)&&v>=0){setCustomCapacities(c=>({...c,[row.dept]:v}));}setEditingCapacity(null);}
                                 if(e.key==='Escape')setEditingCapacity(null);
                               }}
-                              style={{width:55,background:'#0b0d12',border:'1.5px solid #ff5500',color:'#fff',padding:'3px 6px',borderRadius:4,fontSize:12,outline:'none'}}/>
-                            <button onClick={()=>{const v=parseInt(capacityInput);if(!isNaN(v)&&v>=0){setCustomCapacities(c=>({...c,[row.dept]:v}));}setEditingCapacity(null);}} style={{background:'#ff5500',border:'none',color:'#fff',padding:'3px 8px',borderRadius:4,cursor:'pointer',fontWeight:700,fontSize:12}}>✓</button>
-                            <button onClick={()=>setEditingCapacity(null)} style={{background:'#222',border:'1px solid #333',color:'#888',padding:'3px 6px',borderRadius:4,cursor:'pointer',fontSize:12}}>✕</button>
+                              style={{width:60,background:'rgba(255,255,255,0.04)',border:'1px solid var(--orange)',color:'var(--text-primary)',padding:'4px 8px',borderRadius:6,fontSize:12,outline:'none'}}/>
+                            <button onClick={()=>{const v=parseInt(capacityInput);if(!isNaN(v)&&v>=0){setCustomCapacities(c=>({...c,[row.dept]:v}));}setEditingCapacity(null);}} className='btn-primary' style={{padding:'4px 8px',borderRadius:6,fontSize:11}}>✓</button>
+                            <button onClick={()=>setEditingCapacity(null)} className='btn-secondary' style={{padding:'4px 6px',borderRadius:6,fontSize:11}}>✕</button>
                           </div>
                         ):(
                           <div style={{display:'flex',alignItems:'center',gap:5}}>
-                            <span style={{color:'#777'}}>{row.capacity??'—'}</span>
-                            <button onClick={()=>{setEditingCapacity(row.dept);setCapacityInput(row.capacity!=null?String(row.capacity):'');}} style={{background:'none',border:'1px solid #2a3040',color:'#556',padding:'1px 5px',borderRadius:3,cursor:'pointer',fontSize:10}}>✏️</button>
+                            <span style={{color:'var(--text-secondary)'}}>{row.capacity??'—'}</span>
+                            <button onClick={()=>{setEditingCapacity(row.dept);setCapacityInput(row.capacity!=null?String(row.capacity):'');}} className='btn-secondary' style={{padding:'2px 6px',fontSize:10,marginLeft:4}}>✏️</button>
                           </div>
                         )}
                       </td>
-                      <td style={{padding:'8px 11px',fontWeight:700,color:row.available===null?'#444':row.available<0?'#e02020':row.available<=3?'#e8a000':'#4a9'}}>{row.available!==null?row.available:'—'}</td>
+                      <td style={{fontWeight:700,color:row.available===null?'var(--text-muted)':row.available<0?'var(--red)':row.available<=3?'var(--yellow)':'var(--green)',fontFamily:'var(--font-display)',fontSize:15}}>{row.available!==null?row.available:'—'}</td>
                       <td style={{padding:'8px 11px'}}>{statusBadge(row.available,row.capacity)}</td>
                       <td style={{padding:'8px 11px'}}>
                         <button onClick={()=>{if(window.confirm('Remove "'+row.dept+'" from the list?')){setRemovedDepts(prev=>[...prev,row.dept]);setCustomDepts(prev=>prev.filter(d=>d.name!==row.dept));}}}
-                          style={{background:'rgba(224,32,32,0.12)',border:'1px solid #5a1010',color:'#e06060',padding:'3px 8px',borderRadius:4,cursor:'pointer',fontSize:11,fontWeight:600}}>🗑</button>
+                          style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',color:'#f87171',padding:'4px 8px',borderRadius:6,cursor:'pointer',fontSize:11,fontWeight:600}}>🗑</button>
                       </td>
                     </tr>
                   ))}
@@ -1381,16 +2063,16 @@ function App() {
               </table>
             </div>
 
-            <div style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:8,padding:'11px 14px',marginTop:12,display:'flex',flexWrap:'wrap',gap:9,alignItems:'flex-end'}}>
+            <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:'16px',marginTop:14,display:'flex',flexWrap:'wrap',gap:10,alignItems:'flex-end'}}>
               <div>
-                <div style={{fontSize:9,color:'#ff5500',fontWeight:700,textTransform:'uppercase',letterSpacing:1.5,marginBottom:4}}>Add New Department</div>
+                <div className='section-title' style={{marginBottom:8}}>Add New Department</div>
                 <input value={addDeptName} onChange={e=>setAddDeptName(e.target.value)} placeholder="Department name"
-                  style={{background:'#0b0d12',border:'1.5px solid #2a2f40',borderRadius:5,padding:'7px 10px',color:'#fff',fontSize:13,outline:'none',width:160}}/>
+                  style={{background:'rgba(255,255,255,0.04)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 12px',color:'var(--text-primary)',fontSize:13,outline:'none',width:180,boxSizing:'border-box'}}/>
               </div>
               <div>
-                <div style={{fontSize:9,color:'#ff5500',fontWeight:700,textTransform:'uppercase',letterSpacing:1.5,marginBottom:4}}>Capacity</div>
+                <div className='section-title' style={{marginBottom:8}}>Capacity</div>
                 <input type="number" min="0" value={addDeptCapacity} onChange={e=>setAddDeptCapacity(e.target.value)} placeholder="e.g. 10"
-                  style={{background:'#0b0d12',border:'1.5px solid #2a2f40',borderRadius:5,padding:'7px 10px',color:'#fff',fontSize:13,outline:'none',width:80}}/>
+                  style={{background:'rgba(255,255,255,0.04)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 12px',color:'var(--text-primary)',fontSize:13,outline:'none',width:90,boxSizing:'border-box'}}/>
               </div>
               <button onClick={()=>{
                 const name=addDeptName.trim(); const cap=parseInt(addDeptCapacity);
@@ -1399,45 +2081,45 @@ function App() {
                 setCustomDepts(prev=>[...prev,{name,capacity:isNaN(cap)?null:cap}]);
                 setRemovedDepts(prev=>prev.filter(d=>d!==name));
                 setAddDeptName(''); setAddDeptCapacity('');
-              }} style={{background:'#ff5500',border:'none',color:'#fff',padding:'7px 14px',borderRadius:5,cursor:'pointer',fontWeight:700,fontSize:13}}>+ Add</button>
+              }} className='btn-primary' style={{padding:'9px 18px',borderRadius:10}}>+ Add</button>
             </div>
           </div>
         )}
 
         {/* MODEL & BATCH TAB */}
         {activeTab==='models' && (
-          <div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginBottom:16}}>
-              {[{label:'Total Vehicles',value:totalVehicles,color:'#ff5500'},{label:'Unique Models',value:modelBatchSummary.length,color:'#4a9eff'},{label:'Batches',value:[...new Set(vehicles.map(v=>v.batch).filter(Boolean))].length,color:'#9a7fff'}].map(s=>(
-                <div key={s.label} style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:8,padding:'11px'}}>
-                  <div style={{fontSize:9,color:'#556',textTransform:'uppercase',letterSpacing:1.5,marginBottom:3,fontWeight:700}}>{s.label}</div>
-                  <div style={{fontSize:22,fontWeight:800,color:s.color}}>{s.value}</div>
+          <div style={{maxWidth:1200}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:14,marginBottom:24}}>
+              {[{label:'Total Vehicles',value:totalVehicles,cls:'orange'},{label:'Unique Models',value:modelBatchSummary.length,cls:'blue'},{label:'Batches',value:[...new Set(vehicles.map(v=>v.batch).filter(Boolean))].length,cls:'purple'}].map(s=>(
+                <div key={s.label} className={`stat-card ${s.cls}`}>
+                  <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',textTransform:'uppercase',letterSpacing:2,marginBottom:6,fontWeight:700,fontFamily:'var(--font-display)'}}>{s.label}</div>
+                  <div style={{fontSize:32,fontWeight:900,color:s.cls==='orange'?'var(--orange)':s.cls==='blue'?'var(--blue)':'var(--purple)',fontFamily:'var(--font-display)'}}>{s.value}</div>
                 </div>
               ))}
             </div>
             <div style={{display:'flex',gap:8,marginBottom:11,alignItems:'center'}}>
               <select value={modelFilter} onChange={e=>setModelFilter(e.target.value)}
-                style={{background:'#151820',border:'1.5px solid #2a2f40',borderRadius:6,padding:'8px 12px',color:modelFilter?'#e8e8e8':'#666',fontSize:13,outline:'none',cursor:'pointer',minWidth:230}}>
+                style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,102,0,0.3)',borderRadius:10,padding:'10px 14px',color:modelFilter?'var(--text-primary)':'var(--text-muted)',fontSize:13,outline:'none',cursor:'pointer',minWidth:250}}>
                 <option value="">— All Models —</option>
                 {MODEL_OPTIONS.map(m=><option key={m} value={m}>{m}</option>)}
               </select>
-              {modelFilter&&<button onClick={()=>setModelFilter('')} style={{background:'#222',border:'1px solid #333',color:'#888',padding:'7px 11px',borderRadius:6,cursor:'pointer',fontSize:12}}>✕ Clear</button>}
+              {modelFilter&&<button onClick={()=>setModelFilter('')} className='btn-secondary' style={{padding:'8px 14px',borderRadius:10}}>✕ Clear</button>}
             </div>
-            <div style={{overflowX:'auto',borderRadius:8,border:'1.5px solid #1e2535'}}>
-              <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+            <div style={{overflowX:'auto',borderRadius:'var(--radius)',border:'1px solid var(--border)'}}>
+              <table className='premium-table'>
                 <thead>
                   <tr style={{background:'#0f1420',borderBottom:'2px solid #ff5500'}}>
                     {['#','Model Name','Total','Batch Breakdown'].map(h=>(
-                      <th key={h} style={{padding:'9px 11px',textAlign:'left',color:'#ff5500',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:1,whiteSpace:'nowrap'}}>{h}</th>
+                      <th key={h} style={{padding:'9px 11px',textAlign:'left',color:'var(--orange)',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:1,whiteSpace:'nowrap'}}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredModelSummary.map((row,i)=>(
-                    <tr key={row.model} style={{background:i%2===0?'#0f1117':'#111520',borderBottom:'1px solid #1a1f30'}}>
-                      <td style={{padding:'8px 11px',color:'#444',fontSize:11,verticalAlign:'top'}}>{i+1}</td>
-                      <td style={{padding:'8px 11px',fontWeight:700,color:'#ddd',verticalAlign:'top',minWidth:150}}>{row.model||'—'}</td>
-                      <td style={{padding:'8px 11px',verticalAlign:'top'}}><span style={{fontSize:17,fontWeight:800,color:'#ff5500'}}>{row.total}</span></td>
+                    <tr key={row.model}>
+                      <td style={{color:'var(--text-muted)',fontSize:11,verticalAlign:'top'}}>{i+1}</td>
+                      <td style={{fontWeight:700,color:'var(--text-primary)',verticalAlign:'top',minWidth:150}}>{row.model||'—'}</td>
+                      <td style={{verticalAlign:'top'}}><span style={{fontSize:18,fontWeight:900,color:'var(--orange)',fontFamily:'var(--font-display)'}}>{row.total}</span></td>
                       <td style={{padding:'8px 11px',verticalAlign:'top'}}>
                         <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                           {row.batches.map(b=>(
@@ -1460,31 +2142,31 @@ function App() {
           vaVehicles.forEach(v=>{const l=(v.location||'').trim()||'Unknown';locCounts[l]=(locCounts[l]||0)+1;});
           const locData=Object.entries(locCounts).sort((a,b)=>b[1]-a[1]);
           return (
-          <div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginBottom:16}}>
-              {[{label:'VA Team Total',value:vaVehicles.length,color:'#ff5500'},{label:'Departments',value:locData.length,color:'#4a9eff'},{label:'All Teams Total',value:totalVehicles,color:'#888'}].map(s=>(
-                <div key={s.label} style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:8,padding:'11px'}}>
-                  <div style={{fontSize:9,color:'#556',textTransform:'uppercase',letterSpacing:1.5,marginBottom:3,fontWeight:700}}>{s.label}</div>
-                  <div style={{fontSize:22,fontWeight:800,color:s.color}}>{s.value}</div>
+          <div style={{maxWidth:1000}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:14,marginBottom:24}}>
+              {[{label:'VA Team Total',value:vaVehicles.length,cls:'orange'},{label:'Departments',value:locData.length,cls:'blue'},{label:'All Teams Total',value:totalVehicles,cls:'purple'}].map(s=>(
+                <div key={s.label} className={`stat-card ${s.cls}`}>
+                  <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',textTransform:'uppercase',letterSpacing:2,marginBottom:6,fontWeight:700,fontFamily:'var(--font-display)'}}>{s.label}</div>
+                  <div style={{fontSize:32,fontWeight:900,color:s.cls==='orange'?'var(--orange)':s.cls==='blue'?'var(--blue)':'var(--purple)',fontFamily:'var(--font-display)'}}>{s.value}</div>
                 </div>
               ))}
             </div>
-            <div style={{fontSize:10,color:'#ff5500',fontWeight:700,textTransform:'uppercase',letterSpacing:2,marginBottom:9}}>VA Team Vehicles by Department</div>
-            <div style={{borderRadius:8,border:'1.5px solid #1e2535',overflow:'hidden',maxWidth:520}}>
-              <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+            <div className='section-title' style={{marginBottom:14,fontSize:11}}>VA Team Vehicles by Department</div>
+            <div style={{borderRadius:'var(--radius)',border:'1px solid var(--border)',overflow:'hidden',maxWidth:600}}>
+              <table className='premium-table'>
                 <thead>
-                  <tr style={{background:'#0f1420',borderBottom:'2px solid #ff5500'}}>
+                  <tr>
                     {['#','Department','Vehicles','% of VA'].map(h=>(
-                      <th key={h} style={{padding:'9px 11px',textAlign:'left',color:'#ff5500',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:1,whiteSpace:'nowrap'}}>{h}</th>
+                      <th key={h}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {locData.map(([name,value],i)=>(
-                    <tr key={name} style={{background:i%2===0?'#0f1117':'#111520',borderBottom:'1px solid #1a1f30'}}>
+                    <tr key={name}>
                       <td style={{padding:'8px 11px',color:'#444',fontSize:11}}>{i+1}</td>
                       <td style={{padding:'8px 11px',fontWeight:600,color:'#ddd'}}>{name}</td>
-                      <td style={{padding:'8px 11px',fontWeight:800,fontSize:14,color:'#ff5500'}}>{value}</td>
+                      <td style={{padding:'8px 11px',fontWeight:800,fontSize:14,color:'var(--orange)'}}>{value}</td>
                       <td style={{padding:'8px 11px',color:'#888'}}>{((value/vaVehicles.length)*100).toFixed(1)}%</td>
                     </tr>
                   ))}
@@ -1497,18 +2179,17 @@ function App() {
 
         {/* ADD VEHICLE TAB */}
         {activeTab==='add' && (
-          !isAdmin ? <div style={{textAlign:'center',padding:'60px 20px',color:'#556'}}><div style={{fontSize:36,marginBottom:12}}>🔒</div><div style={{fontSize:16,fontWeight:700,color:'#888',marginBottom:6}}>Admin Access Required</div><div style={{fontSize:12}}>Only Admin can add or edit vehicle entries.</div></div> :
+          !isAdmin ? <div style={{textAlign:'center',padding:'80px 20px',color:'var(--text-muted)'}}><div style={{fontSize:48,marginBottom:16,opacity:0.4}}>🔒</div><div style={{fontSize:18,fontWeight:700,color:'var(--text-secondary)',marginBottom:8,fontFamily:'var(--font-display)',letterSpacing:1}}>Admin Access Required</div><div style={{fontSize:13}}>Only Admin can add or edit vehicle entries.</div></div> :
           <div>
-            <div style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:9,padding:'16px',maxWidth:900,marginBottom:20}}>
-              <div style={{fontSize:10,color:'#ff5500',fontWeight:700,textTransform:'uppercase',letterSpacing:2,marginBottom:12}}>New Vehicle Details</div>
-              {addError&&<div style={{background:'rgba(192,57,43,0.18)',border:'1px solid #c0392b',color:'#ff8888',padding:'8px 12px',borderRadius:6,marginBottom:10,fontSize:12}}>{addError}</div>}
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:'9px 16px'}}>
+            <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'24px',maxWidth:960,marginBottom:24}}>
+              <div className='section-title' style={{marginBottom:18}}>New Vehicle Details</div>
+              {addError&&<div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.4)',color:'#f87171',padding:'10px 14px',borderRadius:10,marginBottom:14,fontSize:12}}>{addError}</div>}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:'14px 20px'}}>
                 {Object.entries(fieldLabels).map(([key,label])=>(
                   <div key={key}>
-                    <label style={{fontSize:9,color:'#556',textTransform:'uppercase',letterSpacing:1.5,display:'block',marginBottom:3}}>{label}{(key==='chassis_number'||key==='model_name')&&<span style={{color:'#ff5500'}}> *</span>}</label>
+                    <label style={{fontSize:9,color:'var(--orange)',textTransform:'uppercase',letterSpacing:2,display:'block',marginBottom:5,fontWeight:700,fontFamily:'var(--font-display)'}}>{label}{(key==='chassis_number'||key==='model_name')&&<span style={{color:'var(--red)'}}> *</span>}</label>
                     {key==='location'?(
-                      <select value={addForm.location} onChange={e=>setAddForm(f=>({...f,location:e.target.value,parking_spot:''}))}
-                        style={{width:'100%',background:'#151820',border:'1.5px solid #2a2f40',color:'#fff',padding:'7px 10px',borderRadius:5,fontSize:12,outline:'none',boxSizing:'border-box'}}>
+                      <select value={addForm.location} onChange={e=>setAddForm(f=>({...f,location:e.target.value,parking_spot:''}))} className='edit-form-input' style={{cursor:'pointer',borderColor:'rgba(255,102,0,0.3)'}}>
                         <option value="">Select Location</option>
                         {LOCATION_OPTIONS.map(loc=><option key={loc} value={loc}>{loc}</option>)}
                       </select>
@@ -1517,49 +2198,44 @@ function App() {
                         const loc = (addForm.location||'').trim();
                         const cap = getLocationCapacity(loc);
                         if (!loc || !cap || loc==='Scrapped' || loc==='Pending for Scrapping') {
-                          return <input value={addForm.parking_spot} onChange={e=>setAddForm(f=>({...f,parking_spot:e.target.value}))}
-                            type="text" placeholder="N/A"
-                            style={{width:'100%',boxSizing:'border-box',background:'#151820',border:'1.5px solid #444',color:'#888',padding:'7px 10px',borderRadius:5,fontSize:12,outline:'none'}}/>;
+                          return <input value={addForm.parking_spot} onChange={e=>setAddForm(f=>({...f,parking_spot:e.target.value}))} type="text" placeholder="N/A" className='edit-form-input' style={{opacity:0.5}}/>;
                         }
                         const spots = getAvailableSpots(loc, null);
                         return (
-                          <select value={addForm.parking_spot} onChange={e=>setAddForm(f=>({...f,parking_spot:e.target.value}))}
-                            style={{width:'100%',background:'#151820',border:'1.5px solid #00bcd4',color:'#fff',padding:'7px 10px',borderRadius:5,fontSize:12,outline:'none',boxSizing:'border-box'}}>
+                          <select value={addForm.parking_spot} onChange={e=>setAddForm(f=>({...f,parking_spot:e.target.value}))} className='edit-form-input' style={{cursor:'pointer',borderColor:'var(--cyan)'}}>
                             <option value="">-- No Spot --</option>
                             {spots.map(s=><option key={s} value={s}>{s}</option>)}
                           </select>
                         );
                       })()
                     ):(
-                      <input value={addForm[key]} onChange={e=>setAddForm(f=>({...f,[key]:e.target.value}))}
-                        type={key==='date'?'date':'text'}
-                        style={{width:'100%',boxSizing:'border-box',background:'#151820',border:'1.5px solid #2a2f40',color:'#fff',padding:'7px 10px',borderRadius:5,fontSize:12,outline:'none',fontFamily:key==='chassis_number'||key==='engine_number'?'monospace':'inherit'}}/>
+                      <input value={addForm[key]} onChange={e=>setAddForm(f=>({...f,[key]:e.target.value}))} type={key==='date'?'date':'text'} className='edit-form-input' style={{fontFamily:key==='chassis_number'||key==='engine_number'?'var(--font-mono)':'inherit'}}/>
                     )}
                   </div>
                 ))}
               </div>
-              <button onClick={handleAddVehicle} style={{marginTop:14,background:'#ff5500',border:'none',color:'#fff',padding:'9px 24px',borderRadius:6,cursor:'pointer',fontWeight:800,fontSize:13,letterSpacing:1}}>➕ ADD VEHICLE</button>
+              <button onClick={handleAddVehicle} className='btn-primary' style={{marginTop:18,padding:'12px 28px',borderRadius:12,fontSize:14}}>➕ ADD VEHICLE</button>
             </div>
-            <div style={{fontSize:10,color:'#ff5500',fontWeight:700,textTransform:'uppercase',letterSpacing:2,marginBottom:7}}>All Vehicles ({vehicles.length})</div>
-            <div style={{overflowX:'auto',borderRadius:8,border:'1.5px solid #1e2535',maxHeight:350,overflowY:'auto'}}>
-              <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
-                <thead style={{position:'sticky',top:0,zIndex:5}}>
-                  <tr style={{background:'#0f1420',borderBottom:'2px solid #ff5500'}}>
+            <div className='section-title' style={{marginBottom:14,marginTop:8}}>All Vehicles ({vehicles.length})</div>
+            <div style={{overflowX:'auto',borderRadius:'var(--radius)',border:'1px solid var(--border)',maxHeight:380,overflowY:'auto'}}>
+              <table className='premium-table'>
+                <thead style={{position:'sticky',top:0,zIndex:5,background:'var(--bg-surface)'}}>
+                  <tr>
                     {['#','VMS No','Model','Batch','Chassis No','Location','Date'].map(h=>(
-                      <th key={h} style={{padding:'8px 10px',textAlign:'left',color:'#ff5500',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:1,whiteSpace:'nowrap'}}>{h}</th>
+                      <th key={h}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {vehicles.map((v,i)=>(
-                    <tr key={v.id} style={{background:i%2===0?'#0f1117':'#111520',borderBottom:'1px solid #1a1f30'}}>
-                      <td style={{padding:'6px 10px',color:'#555'}}>{i+1}</td>
-                      <td style={{padding:'6px 10px',color:'#888',fontSize:11}}>{v.vms_no||'—'}</td>
-                      <td style={{padding:'6px 10px',color:'#ddd',fontWeight:600}}>{v.model_name||'—'}</td>
-                      <td style={{padding:'6px 10px',fontSize:10}}><span style={{background:batchColor(v.batch||''),color:'#fff',padding:'1px 5px',borderRadius:3,fontWeight:600}}>{v.batch||'—'}</span></td>
-                      <td style={{padding:'6px 10px',color:'#f90',fontFamily:'monospace',fontSize:11}}>{v.chassis_number||'—'}</td>
-                      <td style={{padding:'6px 10px',color:'#7ab',fontSize:11}}>{v.location||'—'}</td>
-                      <td style={{padding:'6px 10px',color:'#555',fontSize:11}}>{formatDate(v.date)}</td>
+                    <tr key={v.id}>
+                      <td style={{color:'var(--text-muted)',fontSize:11}}>{i+1}</td>
+                      <td style={{color:'var(--text-muted)',fontFamily:'var(--font-mono)',fontSize:11}}>{v.vms_no||'—'}</td>
+                      <td style={{color:'var(--text-primary)',fontWeight:600}}>{v.model_name||'—'}</td>
+                      <td><span style={{background:batchColor(v.batch||''),color:'#fff',padding:'3px 8px',borderRadius:20,fontSize:10,fontWeight:600,whiteSpace:'nowrap'}}>{v.batch||'—'}</span></td>
+                      <td style={{color:'#ffa040',fontFamily:'var(--font-mono)',fontSize:11}}>{v.chassis_number||'—'}</td>
+                      <td style={{color:'var(--cyan)',fontSize:11}}>{v.location||'—'}</td>
+                      <td style={{color:'var(--text-muted)',fontSize:11}}>{formatDate(v.date)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1615,7 +2291,7 @@ function App() {
 
           const SlotColumnFlex = ({slots, labelFn, map, accentColor, accentBorder, accentText, colLabel}) => (
             <div style={{display:'flex',flexDirection:'column',flex:'1 1 0',minWidth:0}}>
-              <div style={{textAlign:'center',color:'#ff5500',fontSize:9,fontWeight:800,letterSpacing:1,textTransform:'uppercase',marginBottom:4,whiteSpace:'nowrap'}}>{colLabel}</div>
+              <div style={{textAlign:'center',color:'var(--orange)',fontSize:9,fontWeight:800,letterSpacing:1,textTransform:'uppercase',marginBottom:4,whiteSpace:'nowrap'}}>{colLabel}</div>
               <div style={{display:'flex',flexDirection:'column',gap:3,flex:1}}>
                 {slots.map(n=><SlotCell key={n} label={labelFn(n)} veh={map[labelFn(n)]} accentColor={accentColor} accentBorder={accentBorder} accentText={accentText}/>)}
               </div>
@@ -1650,9 +2326,9 @@ function App() {
 
           const ParkingTable = ({map, accentColor}) => (
             <div style={{overflowX:'auto',borderRadius:8,border:'1.5px solid #1e2535',marginTop:10}}>
-              <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+              <table className='premium-table'>
                 <thead>
-                  <tr style={{background:'#0f1420',borderBottom:`2px solid ${accentColor}`}}>
+                  <tr>
                     {['Slot','VMS No','Model','Chassis No','Owner','Test'].map(h=>(
                       <th key={h} style={{padding:'8px 11px',textAlign:'left',color:accentColor,fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:1,whiteSpace:'nowrap'}}>{h}</th>
                     ))}
@@ -1663,7 +2339,7 @@ function App() {
                     const na=parseInt(a[0].replace(/^\D+/,'')), nb=parseInt(b[0].replace(/^\D+/,''));
                     return na-nb;
                   }).map(([slot,v],i)=>(
-                    <tr key={slot} style={{background:i%2===0?'#0f1117':'#111520',borderBottom:'1px solid #1a1f30'}}>
+                    <tr key={slot}>
                       <td style={{padding:'7px 11px'}}><span style={{background:accentColor,color:'#001',padding:'2px 7px',borderRadius:4,fontWeight:700,fontSize:11}}>{slot}</span></td>
                       <td style={{padding:'7px 11px',color:'#aaa',fontFamily:'monospace',fontSize:11}}>{v.vms_no||'—'}</td>
                       <td style={{padding:'7px 11px',color:'#ddd',fontWeight:600}}>{v.model_name||'—'}</td>
@@ -1680,29 +2356,29 @@ function App() {
           return (
             <div>
               {/* Combined stats */}
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:9,marginBottom:18}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:14,marginBottom:20}}>
                 {[
-                  {icon:'🏢',label:'Stores Capacity',value:STORES_SLOTS,color:'#667'},
-                  {icon:'🔵',label:'Stores Occupied',value:storesOccupied,color:'#00bcd4'},
-                  {icon:'✅',label:'Stores Free',value:STORES_SLOTS-storesOccupied,color:'#4caf50'},
-                  {icon:'🏍',label:'Bay Capacity',value:VA_SLOTS,color:'#667'},
-                  {icon:'🟠',label:'Bay Occupied',value:vaOccupied,color:'#ff9800'},
-                  {icon:'✅',label:'Bay Free',value:VA_SLOTS-vaOccupied,color:'#4caf50'},
+                  {icon:'🏢',label:'Stores Capacity',value:STORES_SLOTS,cls:'muted'},
+                  {icon:'🔵',label:'Stores Occupied',value:storesOccupied,cls:'blue'},
+                  {icon:'✅',label:'Stores Free',value:STORES_SLOTS-storesOccupied,cls:'green'},
+                  {icon:'🏍',label:'Bay Capacity',value:VA_SLOTS,cls:'muted'},
+                  {icon:'🟠',label:'Bay Occupied',value:vaOccupied,cls:'yellow'},
+                  {icon:'✅',label:'Bay Free',value:VA_SLOTS-vaOccupied,cls:'green'},
                 ].map(s=>(
-                  <div key={s.label} style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:9,padding:'10px 14px',display:'flex',flexDirection:'column',gap:3}}>
-                    <div style={{fontSize:9,color:'#556',textTransform:'uppercase',letterSpacing:1.2,fontWeight:700}}>{s.icon} {s.label}</div>
-                    <div style={{fontSize:24,fontWeight:900,color:s.color,lineHeight:1}}>{s.value}</div>
+                  <div key={s.label} className={`stat-card ${s.cls==='muted'?'':''+s.cls}`} style={s.cls==='muted'?{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'16px'}:{}}>
+                    <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,fontFamily:'var(--font-display)',marginBottom:6}}>{s.icon} {s.label}</div>
+                    <div style={{fontSize:28,fontWeight:900,fontFamily:'var(--font-display)',color:s.cls==='blue'?'var(--cyan)':s.cls==='green'?'var(--green)':s.cls==='yellow'?'var(--yellow)':'var(--text-muted)',lineHeight:1}}>{s.value}</div>
                   </div>
                 ))}
               </div>
               {/* Legend */}
-              <div style={{display:'flex',gap:16,flexWrap:'wrap',marginBottom:14,padding:'8px 14px',background:'#0d1017',borderRadius:7,border:'1px solid #1a2030',alignItems:'center'}}>
-                <span style={{fontSize:10,color:'#445',fontWeight:700,textTransform:'uppercase',letterSpacing:1}}>Legend:</span>
+              <div style={{display:'flex',gap:14,flexWrap:'wrap',marginBottom:16,padding:'10px 16px',background:'rgba(255,255,255,0.03)',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',alignItems:'center'}}>
+                <span style={{fontSize:10,color:'var(--text-muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:2,fontFamily:'var(--font-display)'}}>Legend:</span>
                 {[
                   {color:'#00bcd4',border:'#00e5ff',icon:'🔵',label:'VA Stores — Occupied'},
                   {color:'#ff9800',border:'#ffb74d',icon:'🟠',label:'VA Bay — Occupied'},
                   {color:'#0d2a0d',border:'#1a5a1a',icon:'✅',label:'Available'},
-                  {color:'#3a1a00',border:'#ff5500',icon:'🚪',label:'Door'},
+                  {color:'#3a1a00',border:'var(--orange)',icon:'🚪',label:'Door'},
                 ].map(l=>(
                   <div key={l.label} style={{display:'flex',alignItems:'center',gap:5}}>
                     <div style={{width:12,height:12,background:l.color,border:`1.5px solid ${l.border}`,borderRadius:2,flexShrink:0}}></div>
@@ -1712,11 +2388,11 @@ function App() {
               </div>
 
               {/* ── VA STORES LAYOUT (S1–S132) ── */}
-              <div style={{background:'#0f1117',border:'2px solid #00bcd4',borderRadius:12,padding:'16px',marginBottom:20,boxShadow:'0 0 24px rgba(0,188,212,0.07)'}}>
+              <div style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(6,182,212,0.3)',borderRadius:'var(--radius)',padding:'20px',marginBottom:20,boxShadow:'0 0 32px rgba(6,182,212,0.06)'}}>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:6}}>
                   <div>
-                    <div style={{fontSize:14,fontWeight:900,color:'#00bcd4',letterSpacing:2,textTransform:'uppercase'}}>🏢 VA Stores Parking</div>
-                    <div style={{fontSize:10,color:'#667',marginTop:2}}>📍 Slots S1–S132 &nbsp;·&nbsp; 🅿️ Capacity: 132 &nbsp;·&nbsp; ✅ Free: {STORES_SLOTS-storesOccupied} &nbsp;·&nbsp; 🔵 Used: {storesOccupied}</div>
+                    <div style={{fontFamily:'var(--font-display)',fontSize:16,fontWeight:800,color:'var(--cyan)',letterSpacing:2,textTransform:'uppercase'}}>🏢 VA Stores Parking</div>
+                    <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>📍 Slots S1–S132 · 🅿️ 132 total · ✅ {STORES_SLOTS-storesOccupied} free · 🔵 {storesOccupied} used</div>
                   </div>
                 </div>
                 <div style={{width:'100%'}}>
@@ -1733,37 +2409,37 @@ function App() {
                   <HGangway/>
                   <StandaloneRow slots={sBot} labelFn={sLabelFn} map={storesMap} accentColor='#00bcd4' accentBorder='#00e5ff' accentText='#001f24'/>
                   <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
-                    <div style={{background:'#3a1a00',color:'#ff5500',padding:'4px 14px',borderRadius:4,fontSize:10,fontWeight:700,letterSpacing:1,border:'1.5px solid #ff5500'}}>🚪 DOOR</div>
+                    <div style={{background:'#3a1a00',color:'var(--orange)',padding:'4px 14px',borderRadius:4,fontSize:10,fontWeight:700,letterSpacing:1,border:'1px solid var(--orange)'}}>🚪 DOOR</div>
                   </div>
                 </div>
                 {storesOccupied > 0 ? (
-                  <><div style={{fontSize:10,color:'#00bcd4',fontWeight:700,textTransform:'uppercase',letterSpacing:2,marginTop:16,marginBottom:4}}>🔵 VA Stores — Parked Vehicles ({storesOccupied})</div>
+                  <><div className='section-title' style={{marginTop:20,marginBottom:10,color:'var(--cyan)',fontSize:11}}>🔵 VA Stores — Parked Vehicles ({storesOccupied})</div>
                   <ParkingTable map={storesMap} accentColor='#00bcd4'/></>
                 ) : (
                   <div style={{textAlign:'center',padding:'18px',color:'#3a5a6a',fontSize:12,marginTop:8,border:'1px dashed #1a3a4a',borderRadius:7}}>
                     🏢 No vehicles assigned to VA Stores slots yet.<br/>
-                    <span style={{fontSize:10,color:'#445'}}>Assign spots S1–S132 via <strong style={{color:'#ff5500'}}>🔍 Track</strong> tab · Location = <strong style={{color:'#00bcd4'}}>VA Stores</strong></span>
+                    <span style={{fontSize:10,color:'#445'}}>Assign spots S1–S132 via <strong style={{color:'var(--orange)'}}>🔍 Track</strong> tab · Location = <strong style={{color:'#00bcd4'}}>VA Stores</strong></span>
                   </div>
                 )}
               </div>
 
               {/* ── VA BAY LAYOUT (VA1–VA20) ── */}
-              <div style={{background:'#0f1117',border:'2px solid #ff9800',borderRadius:12,padding:'18px',boxShadow:'0 0 24px rgba(255,152,0,0.1)'}}>
+              <div style={{background:'rgba(245,158,11,0.04)',border:'1px solid rgba(245,158,11,0.3)',borderRadius:'var(--radius)',padding:'20px',boxShadow:'0 0 32px rgba(245,158,11,0.06)'}}>
                 {/* Header */}
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
                   <div>
-                    <div style={{fontSize:15,fontWeight:900,color:'#ff9800',letterSpacing:2,textTransform:'uppercase'}}>🏍 VA Bay Parking</div>
+                    <div style={{fontFamily:'var(--font-display)',fontSize:16,fontWeight:800,color:'var(--yellow)',letterSpacing:2,textTransform:'uppercase'}}>🏍 VA Bay Parking</div>
                     <div style={{fontSize:10,color:'#667',marginTop:3}}>
                       📍 Slots VA1–VA20 &nbsp;·&nbsp; 🅿️ Capacity: 20
-                      &nbsp;·&nbsp; <span style={{color:'#4caf50'}}>✅ Free: {VA_SLOTS - vaOccupied}</span>
+                      &nbsp;·&nbsp; <span style={{color:'var(--green)'}}>✅ Free: {VA_SLOTS - vaOccupied}</span>
                       &nbsp;·&nbsp; <span style={{color:'#ff9800'}}>🏍 Used: {vaOccupied}</span>
-                      &nbsp;·&nbsp; <span style={{color:'#ff5500'}}>🚪 Door: Upper-Right Corner</span>
+                      &nbsp;·&nbsp; <span style={{color:'var(--orange)'}}>🚪 Door: Upper-Right Corner</span>
                     </div>
                   </div>
                   <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
                     <div style={{display:'flex',alignItems:'center',gap:4}}><div style={{width:12,height:12,background:'#ff9800',borderRadius:2,border:'1.5px solid #ffb74d'}}></div><span style={{color:'#aaa',fontSize:10}}>🏍 Occupied</span></div>
                     <div style={{display:'flex',alignItems:'center',gap:4}}><div style={{width:12,height:12,background:'#0d2a0d',borderRadius:2,border:'1.5px solid #1a6a1a'}}></div><span style={{color:'#aaa',fontSize:10}}>✅ Free</span></div>
-                    <div style={{display:'flex',alignItems:'center',gap:4}}><div style={{width:12,height:12,background:'#3a1a00',borderRadius:2,border:'1.5px solid #ff5500'}}></div><span style={{color:'#ff5500',fontSize:10}}>🚪 Door</span></div>
+                    <div style={{display:'flex',alignItems:'center',gap:4}}><div style={{width:12,height:12,background:'#3a1a00',borderRadius:2,border:'1px solid var(--orange)'}}></div><span style={{color:'var(--orange)',fontSize:10}}>🚪 Door</span></div>
                   </div>
                 </div>
 
@@ -1783,7 +2459,7 @@ function App() {
 
                   {/* ═══ DOOR — upper-right corner ═══ */}
                   <div style={{display:'flex',justifyContent:'flex-end',padding:'0 8px',marginTop:2}}>
-                    <div style={{background:'#3a1a00',color:'#ff5500',padding:'4px 14px',borderRadius:4,fontSize:10,fontWeight:700,letterSpacing:1,border:'1.5px solid #ff5500'}}>🚪 DOOR</div>
+                    <div style={{background:'#3a1a00',color:'var(--orange)',padding:'4px 14px',borderRadius:4,fontSize:10,fontWeight:700,letterSpacing:1,border:'1px solid var(--orange)'}}>🚪 DOOR</div>
                   </div>
 
                   {/* ═══ ROW 1: VA1–VA10 ═══ */}
@@ -1837,13 +2513,13 @@ function App() {
 
                 {/* Vehicle table */}
                 {vaOccupied > 0 ? (
-                  <><div style={{fontSize:10,color:'#ff9800',fontWeight:700,textTransform:'uppercase',letterSpacing:2,marginTop:16,marginBottom:4}}>🏍 VA Bay — Parked Vehicles ({vaOccupied})</div>
+                  <><div className='section-title' style={{marginTop:20,marginBottom:10,color:'var(--yellow)',fontSize:11}}>🏍 VA Bay — Parked Vehicles ({vaOccupied})</div>
                   <ParkingTable map={vaMap} accentColor='#ff9800'/></>
                 ) : (
-                  <div style={{textAlign:'center',padding:'18px',color:'#3a5a3a',fontSize:12,marginTop:12,border:'1px dashed #1a3a1a',borderRadius:7,background:'#0b0e0b'}}>
+                  <div style={{textAlign:'center',padding:'24px',color:'var(--text-muted)',fontSize:12,marginTop:12,border:'1px dashed rgba(245,158,11,0.2)',borderRadius:'var(--radius-sm)'}}>
                     <div style={{fontSize:28,marginBottom:4}}>🏍</div>
                     No vehicles assigned to VA bay slots yet.<br/>
-                    <span style={{fontSize:10,color:'#445'}}>Assign spots VA1–VA20 via <strong style={{color:'#ff5500'}}>🔍 Track</strong> tab · Location = <strong style={{color:'#ff9800'}}>VA</strong></span>
+                    <span style={{fontSize:10,color:'#445'}}>Assign spots VA1–VA20 via <strong style={{color:'var(--orange)'}}>🔍 Track</strong> tab · Location = <strong style={{color:'#ff9800'}}>VA</strong></span>
                   </div>
                 )}
               </div>
@@ -1853,62 +2529,62 @@ function App() {
 
         {/* EXPORT TAB */}
         {activeTab==='export' && (
-          <div>
-            <div style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:10,padding:'20px',marginBottom:16,maxWidth:600}}>
-              <div style={{fontSize:13,color:'#ff5500',fontWeight:800,textTransform:'uppercase',letterSpacing:2,marginBottom:6}}>⬇️ Export Vehicle Data</div>
-              <div style={{fontSize:12,color:'#667',marginBottom:18}}>Download the complete vehicle dataset. All {vehicles.length} records are included with every field. The file is ready to share via email, WhatsApp, Teams, or any platform.</div>
+          <div style={{maxWidth:800}}>
+            <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'24px',marginBottom:20}}>
+              <div className='section-title' style={{marginBottom:10}}>⬇️ Export Vehicle Data</div>
+              <div style={{fontSize:12,color:'var(--text-muted)',marginBottom:20,lineHeight:1.6}}>Download the complete vehicle dataset. All {vehicles.length} records are included with every field. The file is ready to share via email, WhatsApp, Teams, or any platform.</div>
 
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}}>
                 {/* Excel */}
-                <div style={{background:'linear-gradient(135deg,#0d2a1a,#0f1f12)',border:'1.5px solid #1a5a2a',borderRadius:9,padding:'18px 16px',textAlign:'center',cursor:'pointer'}} onClick={()=>exportData('excel')}>
+                <div className='quick-action' style={{borderColor:'rgba(16,185,129,0.3)'}} onClick={()=>exportData('excel')}>
                   <div style={{fontSize:32,marginBottom:8}}>📊</div>
-                  <div style={{fontSize:13,fontWeight:800,color:'#4caf50',marginBottom:4}}>Excel (.xls)</div>
+                  <div style={{fontSize:14,fontWeight:800,color:'var(--green)',marginBottom:6,fontFamily:'var(--font-display)',letterSpacing:0.5}}>Excel (.xls)</div>
                   <div style={{fontSize:10,color:'#556',lineHeight:1.4}}>Opens in Microsoft Excel, Google Sheets, LibreOffice</div>
-                  <button onClick={e=>{e.stopPropagation();exportData('excel');}} style={{marginTop:12,background:'#1a7a3a',border:'none',color:'#fff',padding:'7px 16px',borderRadius:5,cursor:'pointer',fontWeight:700,fontSize:11,width:'100%'}}>Download XLS</button>
+                  <button onClick={e=>{e.stopPropagation();exportData('excel');}} style={{marginTop:12,background:'rgba(16,185,129,0.2)',border:'1px solid rgba(16,185,129,0.4)',color:'var(--green)',padding:'8px 16px',borderRadius:8,cursor:'pointer',fontWeight:700,fontSize:11,width:'100%'}}>Download XLS</button>
                 </div>
 
                 {/* CSV */}
-                <div style={{background:'linear-gradient(135deg,#1a1a0d,#1f1f10)',border:'1.5px solid #4a4a1a',borderRadius:9,padding:'18px 16px',textAlign:'center',cursor:'pointer'}} onClick={()=>exportData('csv')}>
+                <div className='quick-action' style={{borderColor:'rgba(245,158,11,0.3)'}} onClick={()=>exportData('csv')}>
                   <div style={{fontSize:32,marginBottom:8}}>📋</div>
-                  <div style={{fontSize:13,fontWeight:800,color:'#ffc107',marginBottom:4}}>CSV (.csv)</div>
+                  <div style={{fontSize:14,fontWeight:800,color:'var(--yellow)',marginBottom:6,fontFamily:'var(--font-display)',letterSpacing:0.5}}>CSV (.csv)</div>
                   <div style={{fontSize:10,color:'#556',lineHeight:1.4}}>Universal format — works in any spreadsheet app or database</div>
-                  <button onClick={e=>{e.stopPropagation();exportData('csv');}} style={{marginTop:12,background:'#7a6a00',border:'none',color:'#fff',padding:'7px 16px',borderRadius:5,cursor:'pointer',fontWeight:700,fontSize:11,width:'100%'}}>Download CSV</button>
+                  <button onClick={e=>{e.stopPropagation();exportData('csv');}} style={{marginTop:12,background:'rgba(245,158,11,0.2)',border:'1px solid rgba(245,158,11,0.4)',color:'var(--yellow)',padding:'8px 16px',borderRadius:8,cursor:'pointer',fontWeight:700,fontSize:11,width:'100%'}}>Download CSV</button>
                 </div>
 
                 {/* JSON */}
-                <div style={{background:'linear-gradient(135deg,#0d1a2a,#0f1825)',border:'1.5px solid #1a3a5a',borderRadius:9,padding:'18px 16px',textAlign:'center',cursor:'pointer'}} onClick={()=>exportData('json')}>
+                <div className='quick-action' style={{borderColor:'rgba(59,130,246,0.3)'}} onClick={()=>exportData('json')}>
                   <div style={{fontSize:32,marginBottom:8}}>🗂️</div>
-                  <div style={{fontSize:13,fontWeight:800,color:'#4a9eff',marginBottom:4}}>JSON (.json)</div>
+                  <div style={{fontSize:14,fontWeight:800,color:'var(--blue)',marginBottom:6,fontFamily:'var(--font-display)',letterSpacing:0.5}}>JSON (.json)</div>
                   <div style={{fontSize:10,color:'#556',lineHeight:1.4}}>Structured data format for developers and system integration</div>
-                  <button onClick={e=>{e.stopPropagation();exportData('json');}} style={{marginTop:12,background:'#1a4a7a',border:'none',color:'#fff',padding:'7px 16px',borderRadius:5,cursor:'pointer',fontWeight:700,fontSize:11,width:'100%'}}>Download JSON</button>
+                  <button onClick={e=>{e.stopPropagation();exportData('json');}} style={{marginTop:12,background:'rgba(59,130,246,0.2)',border:'1px solid rgba(59,130,246,0.4)',color:'var(--blue)',padding:'8px 16px',borderRadius:8,cursor:'pointer',fontWeight:700,fontSize:11,width:'100%'}}>Download JSON</button>
                 </div>
               </div>
             </div>
 
             {/* Import Section */}
-            <div style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:10,padding:'20px',marginBottom:16,maxWidth:600}}>
-              <div style={{fontSize:13,color:'#ff5500',fontWeight:800,textTransform:'uppercase',letterSpacing:2,marginBottom:6}}>⬆️ Import Vehicle Data</div>
+            <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'24px',marginBottom:20}}>
+              <div style={{fontSize:13,color:'var(--orange)',fontWeight:800,textTransform:'uppercase',letterSpacing:2,marginBottom:6}}>⬆️ Import Vehicle Data</div>
               <div style={{fontSize:12,color:'#667',marginBottom:16}}>Import new vehicles from an Excel (.xlsx / .xls) or CSV file. Duplicate chassis numbers are automatically skipped. Only new records are added.</div>
-              <div style={{background:'linear-gradient(135deg,#1a0d2a,#1a1028)',border:'1.5px dashed #5a2a8a',borderRadius:9,padding:'24px 16px',textAlign:'center'}}>
+              <div style={{background:'rgba(139,92,246,0.06)',border:'1px dashed rgba(139,92,246,0.4)',borderRadius:'var(--radius-sm)',padding:'28px 16px',textAlign:'center'}}>
                 <div style={{fontSize:36,marginBottom:8}}>📥</div>
-                <div style={{fontSize:13,fontWeight:800,color:'#b57bff',marginBottom:4}}>Select Excel / CSV File</div>
+                <div style={{fontSize:14,fontWeight:700,color:'var(--purple)',marginBottom:8,fontFamily:'var(--font-display)',letterSpacing:0.5}}>Select Excel / CSV File</div>
                 <div style={{fontSize:10,color:'#556',marginBottom:14,lineHeight:1.5}}>
                   Supported: <span style={{color:'#b57bff'}}>.xlsx · .xls · .csv</span><br/>
                   Required column: <span style={{color:'#f90',fontFamily:'monospace'}}>Chassis Number</span> (other columns matched automatically)
                 </div>
-                <label style={{display:'inline-block',background:'#5a1a8a',border:'none',color:'#fff',padding:'9px 22px',borderRadius:6,cursor:'pointer',fontWeight:700,fontSize:13}}>
+                <label style={{display:'inline-block',background:'linear-gradient(135deg,#5a1a8a,var(--purple))',border:'none',color:'#fff',padding:'10px 24px',borderRadius:50,cursor:'pointer',fontWeight:700,fontSize:13,boxShadow:'0 4px 16px rgba(139,92,246,0.4)'}}>
                   📂 Choose File to Import
                   <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImportExcel} style={{display:'none'}}/>
                 </label>
               </div>
-              <div style={{marginTop:10,fontSize:10,color:'#445',lineHeight:1.6}}>
+              <div style={{marginTop:12,fontSize:11,color:'var(--text-muted)',lineHeight:1.7}}>
                 💡 <strong style={{color:'#667'}}>Tip:</strong> Export your current data first, add new rows in Excel, then import back. The app will skip rows that already exist.
               </div>
             </div>
 
             {/* Summary stats before export */}
-            <div style={{background:'#111520',border:'1.5px solid #1e2535',borderRadius:9,padding:'14px 16px',maxWidth:600}}>
-              <div style={{fontSize:10,color:'#ff5500',fontWeight:700,textTransform:'uppercase',letterSpacing:1.5,marginBottom:10}}>What's Included in the Export</div>
+            <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'20px'}}>
+              <div className='section-title' style={{marginBottom:14}}>What's Included in the Export</div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6}}>
                 {[
                   ['Total Vehicles',vehicles.length],
@@ -1918,20 +2594,21 @@ function App() {
                   ['Locations',[...new Set(vehicles.map(v=>v.location).filter(Boolean))].length],
                   ['Teams',[...new Set(vehicles.map(v=>v.team_ownership).filter(Boolean))].length],
                 ].map(([label,val])=>(
-                  <div key={label} style={{display:'flex',justifyContent:'space-between',background:'#0f1420',borderRadius:5,padding:'7px 10px'}}>
-                    <span style={{fontSize:11,color:'#778'}}>{label}</span>
-                    <span style={{fontSize:12,fontWeight:800,color:'#ff5500'}}>{val}</span>
+                  <div key={label} style={{display:'flex',justifyContent:'space-between',background:'rgba(255,255,255,0.04)',borderRadius:8,padding:'10px 14px'}}>
+                    <span style={{fontSize:11,color:'var(--text-muted)'}}>{label}</span>
+                    <span style={{fontSize:14,fontWeight:800,color:'var(--orange)',fontFamily:'var(--font-display)'}}>{val}</span>
                   </div>
                 ))}
               </div>
-              <div style={{marginTop:10,fontSize:10,color:'#445',lineHeight:1.5}}>
+              <div style={{marginTop:12,fontSize:11,color:'var(--text-muted)',lineHeight:1.7}}>
                 Fields: ID · VMS No · Project · Model Name · Make · Batch · Chassis Number · Engine Number · Location · Parking Spot · Test · Current Status · Date · Team Ownership
               </div>
             </div>
           </div>
         )}
 
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
