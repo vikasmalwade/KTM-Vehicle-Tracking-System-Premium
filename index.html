@@ -543,12 +543,71 @@
       box-shadow: 0 8px 24px rgba(255,102,0,0.15);
     }
 
+    /* === MOBILE BOTTOM NAV === */
+    .mobile-nav {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 60px;
+      background: rgba(7,10,18,0.97);
+      border-top: 1px solid var(--border-orange);
+      z-index: 300;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    .mobile-nav::-webkit-scrollbar { display: none; }
+    .mobile-nav-inner {
+      display: flex;
+      align-items: stretch;
+      height: 100%;
+      min-width: max-content;
+      padding: 0 4px;
+    }
+    .mobile-nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 14px;
+      min-width: 68px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+      gap: 2px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mobile-nav-item.active {
+      border-bottom-color: var(--orange);
+      background: rgba(255,102,0,0.08);
+    }
+    .mobile-nav-item .nav-icon { font-size: 18px; line-height: 1; }
+    .mobile-nav-item .nav-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-family: var(--font-display);
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .mobile-nav-item.active .nav-label { color: var(--orange); }
+
     /* === RESPONSIVE === */
     @media (max-width: 768px) {
       :root { --sidebar-width: 0px; }
       .sidebar { display: none; }
-      .main-content { margin-left: 0; }
-      .content-area { padding: 16px; }
+      .main-content { margin-left: 0; padding-bottom: 68px; }
+      .content-area { padding: 14px; }
+      .mobile-nav { display: flex; }
+      .app-header { padding: 0 14px; }
+      .page-title { font-size: 20px; }
+      .stat-card { padding: 14px; }
+    }
+    @media (min-width: 769px) {
+      .mobile-nav { display: none !important; }
     }
 
   </style>
@@ -1360,7 +1419,7 @@ function App() {
   ];
 
   const pageTitles = {
-    track: { title: 'Fleet Overview', sub: 'Real-time insights into your vehicle fleet' },
+    track: { title: 'Track Vehicles', sub: 'Search your fleet · Real-time insights and statistics' },
     summary: { title: 'Department Summary', sub: 'Capacity and occupancy across all departments' },
     models: { title: 'Model & Batch', sub: 'Fleet breakdown by model and batch type' },
     va_dept: { title: 'VA Team Summary', sub: 'Vehicle distribution for VA team' },
@@ -1645,73 +1704,6 @@ function App() {
         {/* TRACK TAB */}
         {activeTab==='track' && (
           <div style={{maxWidth:1200}}>
-            {/* Stats Cards */}
-            {(()=>{
-              const activeVehicles = vehicles.filter(v => !isScrapped(v));
-              const va=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='VA').length;
-              const eee=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='EEE').length;
-              const cal=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='CAL').length;
-              const svc=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='Service').length;
-              const uniq=[...new Set(activeVehicles.map(v=>v.model_name).filter(Boolean))].length;
-              const cards = [
-                {label:'Total Fleet',value:activeVehicles.length,color:'var(--orange)',cls:'orange',icon:'🏍',sub:'Active vehicles'},
-                {label:'VA Team',value:va,color:'var(--blue)',cls:'blue',icon:'🔧',sub:'Validation & Analysis'},
-                {label:'EEE Team',value:eee,color:'var(--purple)',cls:'purple',icon:'⚡',sub:'Electrical & Electronics'},
-                {label:'CAL Team',value:cal,color:'var(--green)',cls:'green',icon:'📐',sub:'Calibration'},
-                {label:'Service',value:svc,color:'var(--yellow)',cls:'yellow',icon:'🛠',sub:'Service Department'},
-                {label:'Models',value:uniq,color:'var(--red)',cls:'red',icon:'📋',sub:'Unique Models'},
-              ];
-              return (
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:14,marginBottom:20}}>
-                  {cards.map(s=>(
-                    <div key={s.label} className={`stat-card ${s.cls}`}>
-                      <div style={{position:'absolute',top:14,right:14,fontSize:22,opacity:0.15}}>{s.icon}</div>
-                      <div style={{fontSize:9,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:2,marginBottom:8,fontWeight:700,fontFamily:'var(--font-display)'}}>{s.label}</div>
-                      <div style={{fontSize:36,fontWeight:900,color:s.color,lineHeight:1,fontFamily:'var(--font-display)'}}>{s.value}</div>
-                      <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:6}}>{s.sub}</div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-
-            {/* Fleet Distribution Bar */}
-            {(()=>{
-              const batches=['Production','Pilot 2','Pilot','Pre Pilot','Proto 2','Proto 1','Mule'];
-              const colors=['#10b981','#3b82f6','#1d4ed8','#8b5cf6','#f59e0b','#ef4444','#64748b'];
-              const glows=['rgba(16,185,129,0.6)','rgba(59,130,246,0.6)','rgba(29,78,216,0.6)','rgba(139,92,246,0.6)','rgba(245,158,11,0.6)','rgba(239,68,68,0.6)','rgba(100,116,139,0.6)'];
-              const activeV = vehicles.filter(v => !isScrapped(v));
-              const counts=batches.map(b=>activeV.filter(v=>v.batch===b).length);
-              const total = counts.reduce((a,b)=>a+b,0);
-              return (
-                <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'18px 20px',marginBottom:20}}>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-                    <div>
-                      <div style={{fontFamily:'var(--font-display)',fontSize:13,fontWeight:700,color:'var(--text-primary)',letterSpacing:1,textTransform:'uppercase'}}>Fleet Distribution by Batch</div>
-                      <div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>{total} active vehicles across {batches.filter((_,i)=>counts[i]>0).length} batch types</div>
-                    </div>
-                  </div>
-                  {/* Segmented progress bar */}
-                  <div style={{display:'flex',gap:3,borderRadius:10,overflow:'hidden',height:10,marginBottom:14,background:'rgba(255,255,255,0.05)'}}>
-                    {batches.map((b,i)=>counts[i]>0&&(
-                      <div key={b} style={{flex:counts[i],background:colors[i],borderRadius:4,transition:'all 0.3s',cursor:'default',boxShadow:`0 0 8px ${glows[i]}`}} title={`${b}: ${counts[i]}`}/>
-                    ))}
-                  </div>
-                  {/* Legend */}
-                  <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
-                    {batches.map((b,i)=>counts[i]>0&&(
-                      <div key={b} style={{display:'flex',alignItems:'center',gap:6}}>
-                        <div style={{width:10,height:10,borderRadius:3,background:colors[i],boxShadow:`0 0 6px ${glows[i]}`}}/>
-                        <span style={{fontSize:10,color:'var(--text-muted)'}}>{b}</span>
-                        <span style={{fontSize:11,fontWeight:800,color:'var(--text-secondary)',fontFamily:'var(--font-display)'}}>{counts[i]}</span>
-                        <span style={{fontSize:9,color:'var(--text-muted)'}}>{((counts[i]/total)*100).toFixed(0)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-
             {/* Search panel */}
             <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'22px',marginBottom:20}}>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16}}>
@@ -1824,6 +1816,73 @@ function App() {
                 </div>
               )}
             </div>
+
+            {/* Fleet Overview Stats */}
+            {(()=>{
+              const activeVehicles = vehicles.filter(v => !isScrapped(v));
+              const va=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='VA').length;
+              const eee=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='EEE').length;
+              const cal=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='CAL').length;
+              const svc=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='Service').length;
+              const uniq=[...new Set(activeVehicles.map(v=>v.model_name).filter(Boolean))].length;
+              const cards = [
+                {label:'Total Fleet',value:activeVehicles.length,color:'var(--orange)',cls:'orange',icon:'🏍',sub:'Active vehicles'},
+                {label:'VA Team',value:va,color:'var(--blue)',cls:'blue',icon:'🔧',sub:'Validation & Analysis'},
+                {label:'EEE Team',value:eee,color:'var(--purple)',cls:'purple',icon:'⚡',sub:'Electrical & Electronics'},
+                {label:'CAL Team',value:cal,color:'var(--green)',cls:'green',icon:'📐',sub:'Calibration'},
+                {label:'Service',value:svc,color:'var(--yellow)',cls:'yellow',icon:'🛠',sub:'Service Department'},
+                {label:'Models',value:uniq,color:'var(--red)',cls:'red',icon:'📋',sub:'Unique Models'},
+              ];
+              return (
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:14,marginBottom:20}}>
+                  {cards.map(s=>(
+                    <div key={s.label} className={`stat-card ${s.cls}`}>
+                      <div style={{position:'absolute',top:14,right:14,fontSize:22,opacity:0.15}}>{s.icon}</div>
+                      <div style={{fontSize:9,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:2,marginBottom:8,fontWeight:700,fontFamily:'var(--font-display)'}}>{s.label}</div>
+                      <div style={{fontSize:36,fontWeight:900,color:s.color,lineHeight:1,fontFamily:'var(--font-display)'}}>{s.value}</div>
+                      <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:6}}>{s.sub}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Fleet Distribution Bar */}
+            {(()=>{
+              const batches=['Production','Pilot 2','Pilot','Pre Pilot','Proto 2','Proto 1','Mule'];
+              const colors=['#10b981','#3b82f6','#1d4ed8','#8b5cf6','#f59e0b','#ef4444','#64748b'];
+              const glows=['rgba(16,185,129,0.6)','rgba(59,130,246,0.6)','rgba(29,78,216,0.6)','rgba(139,92,246,0.6)','rgba(245,158,11,0.6)','rgba(239,68,68,0.6)','rgba(100,116,139,0.6)'];
+              const activeV = vehicles.filter(v => !isScrapped(v));
+              const counts=batches.map(b=>activeV.filter(v=>v.batch===b).length);
+              const total = counts.reduce((a,b)=>a+b,0);
+              return (
+                <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'18px 20px',marginBottom:20}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+                    <div>
+                      <div style={{fontFamily:'var(--font-display)',fontSize:13,fontWeight:700,color:'var(--text-primary)',letterSpacing:1,textTransform:'uppercase'}}>Fleet Distribution by Batch</div>
+                      <div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>{total} active vehicles across {batches.filter((_,i)=>counts[i]>0).length} batch types</div>
+                    </div>
+                  </div>
+                  {/* Segmented progress bar */}
+                  <div style={{display:'flex',gap:3,borderRadius:10,overflow:'hidden',height:10,marginBottom:14,background:'rgba(255,255,255,0.05)'}}>
+                    {batches.map((b,i)=>counts[i]>0&&(
+                      <div key={b} style={{flex:counts[i],background:colors[i],borderRadius:4,transition:'all 0.3s',cursor:'default',boxShadow:`0 0 8px ${glows[i]}`}} title={`${b}: ${counts[i]}`}/>
+                    ))}
+                  </div>
+                  {/* Legend */}
+                  <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+                    {batches.map((b,i)=>counts[i]>0&&(
+                      <div key={b} style={{display:'flex',alignItems:'center',gap:6}}>
+                        <div style={{width:10,height:10,borderRadius:3,background:colors[i],boxShadow:`0 0 6px ${glows[i]}`}}/>
+                        <span style={{fontSize:10,color:'var(--text-muted)'}}>{b}</span>
+                        <span style={{fontSize:11,fontWeight:800,color:'var(--text-secondary)',fontFamily:'var(--font-display)'}}>{counts[i]}</span>
+                        <span style={{fontSize:9,color:'var(--text-muted)'}}>{((counts[i]/total)*100).toFixed(0)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Chassis result */}
             {searched && searchResult && searchMode==='chassis' && searchResult.length===1 && (()=>{
@@ -2609,6 +2668,21 @@ function App() {
 
         </div>
       </main>
+
+      {/* ========= MOBILE BOTTOM NAV ========= */}
+      <nav className="mobile-nav">
+        <div className="mobile-nav-inner">
+          {sidebarItems.map(item => (
+            <div key={item.id}
+              className={`mobile-nav-item ${activeTab===item.id?'active':''}`}
+              onClick={()=>setActiveTab(item.id)}>
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-label">{item.label.split(' ')[0]}</span>
+            </div>
+          ))}
+        </div>
+      </nav>
+
     </div>
   );
 }
