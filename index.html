@@ -778,6 +778,10 @@ function App() {
     setSearchResult(prev => prev ? prev.map(v => v.id === editingVehicleId ? updated : v) : prev);
     setEditingVehicleId(null); setVehicleForm({});
     setEditPopupOpen(false);
+    setSearchQ('');
+    setVmsQ(['','','','','','','','']);
+    setSearchResult(null);
+    setSearched(false);
     showToast('Vehicle updated!');
     if (locationChanged) {
       const chassis = orig.chassis_number || 'Unknown';
@@ -1044,6 +1048,8 @@ function App() {
   };
   // ─────────────────────────────────────────────────────────────────────────
 
+  const TEAM_OPTIONS = ['VA','EEE','Engine','CAL','Styling','ODT','Service','For Other Dept'];
+
   const EditForm = ({fd}) => (
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:'8px 14px'}}>
       {Object.entries(fieldLabels).map(([key,label]) => (
@@ -1060,6 +1066,12 @@ function App() {
           ) : key==='date' ? (
             <input type="date" value={fd[key]||''} onChange={e=>handleVehicleFormChange(key,e.target.value)}
               style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:'1px solid var(--border-orange)',color:'#fff',padding:'5px 8px',borderRadius:5,fontSize:12,outline:'none'}}/>
+          ) : key==='team_ownership' ? (
+            <select value={fd[key]||''} onChange={e=>handleVehicleFormChange(key,e.target.value)}
+              style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:'1px solid var(--border-orange)',color:'#fff',padding:'5px 8px',borderRadius:5,fontSize:12,outline:'none',cursor:'pointer'}}>
+              <option value="">Select Team</option>
+              {TEAM_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
           ) : (
             <input type="text" value={fd[key]||''} onChange={e=>handleVehicleFormChange(key,e.target.value)}
               style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:'1px solid var(--border-orange)',color:'#fff',padding:'5px 8px',borderRadius:5,fontSize:12,outline:'none',fontFamily:key==='chassis_number'||key==='engine_number'?'monospace':'inherit'}}/>
@@ -1068,16 +1080,6 @@ function App() {
       ))}
     </div>
   );
-
-  const tabs = [
-    {id:'track', label:'🔍 Track'},
-    {id:'summary', label:'📊 Dept Summary'},
-    {id:'models', label:'🏍️ Model & Batch'},
-    {id:'va_dept', label:'🏢 VA Summary'},
-    {id:'va_parking', label:'🅿️ VA Store Parking'},
-    {id:'add', label:'➕ Add Vehicle'},
-    {id:'export', label:'⬇️ Export'},
-  ];
 
   const exportData = async (format) => {
     const now = new Date();
@@ -1410,6 +1412,7 @@ function App() {
   // Sidebar menu definition for premium layout
   const sidebarItems = [
     {id:'track', label:'Track Vehicles', icon:'🔍'},
+    {id:'fleet', label:'Fleet Overview', icon:'🗺️'},
     {id:'summary', label:'Dept Summary', icon:'📊'},
     {id:'models', label:'Model & Batch', icon:'🏍'},
     {id:'va_dept', label:'VA Summary', icon:'🏢'},
@@ -1419,7 +1422,8 @@ function App() {
   ];
 
   const pageTitles = {
-    track: { title: 'Track Vehicles', sub: 'Search your fleet · Real-time insights and statistics' },
+    fleet: { title: 'Fleet Overview', sub: 'Complete snapshot of your entire vehicle fleet' },
+    track: { title: 'Track Vehicles', sub: 'Find a Vehicle — search by chassis, VMS No, model, project, or location' },
     summary: { title: 'Department Summary', sub: 'Capacity and occupancy across all departments' },
     models: { title: 'Model & Batch', sub: 'Fleet breakdown by model and batch type' },
     va_dept: { title: 'VA Team Summary', sub: 'Vehicle distribution for VA team' },
@@ -1550,7 +1554,7 @@ function App() {
                     </div>
                   </div>
                 </div>
-                <button onClick={()=>{setEditPopupOpen(false);setEditingVehicleId(null);setVehicleForm({});}}
+                <button onClick={()=>{setEditPopupOpen(false);setEditingVehicleId(null);setVehicleForm({});setSearchQ('');setVmsQ(['','','','','','','','']);setSearchResult(null);setSearched(false);}}
                   style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',color:'#f87171',width:32,height:32,borderRadius:'50%',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontWeight:700,transition:'all 0.2s'}}>✕</button>
               </div>
               {/* Modal Body */}
@@ -1569,6 +1573,12 @@ function App() {
                         <ParkingSpotDropdown fd={fd} onChangeFn={handleVehicleFormChange} excludeId={editingVehicleId}/>
                       ) : key==='date' ? (
                         <input type="date" value={fd[key]||''} onChange={e=>handleVehicleFormChange(key,e.target.value)} className="edit-form-input"/>
+                      ) : key==='team_ownership' ? (
+                        <select value={fd[key]||''} onChange={e=>handleVehicleFormChange(key,e.target.value)}
+                          className="edit-form-input" style={{cursor:'pointer'}}>
+                          <option value="">Select Team</option>
+                          {TEAM_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
+                        </select>
                       ) : (
                         <input type="text" value={fd[key]||''} onChange={e=>handleVehicleFormChange(key,e.target.value)}
                           className="edit-form-input"
@@ -1580,7 +1590,7 @@ function App() {
               </div>
               {/* Modal Footer */}
               <div style={{padding:'16px 24px',borderTop:'1px solid var(--border)',display:'flex',gap:10,justifyContent:'flex-end',flexShrink:0}}>
-                <button onClick={()=>{setEditPopupOpen(false);setEditingVehicleId(null);setVehicleForm({});}} className="btn-secondary" style={{padding:'10px 20px',borderRadius:10}}>✕ Cancel</button>
+                <button onClick={()=>{setEditPopupOpen(false);setEditingVehicleId(null);setVehicleForm({});setSearchQ('');setVmsQ(['','','','','','','','']);setSearchResult(null);setSearched(false);}} className="btn-secondary" style={{padding:'10px 20px',borderRadius:10}}>✕ Cancel</button>
                 <button onClick={handleSaveVehicle} className="btn-primary" style={{padding:'10px 28px',borderRadius:10}}>✓ Save Changes</button>
               </div>
             </div>
@@ -1662,7 +1672,7 @@ function App() {
         {sidebarItems.map(item => (
           <div key={item.id}
             className={`sidebar-item ${activeTab===item.id?'active':''}`}
-            onClick={()=>setActiveTab(item.id)}>
+            onClick={()=>{setActiveTab(item.id);window.scrollTo({top:0,behavior:'instant'});}}>
             <span className="icon">{item.icon}</span>
             <span>{item.label}</span>
           </div>
@@ -1693,7 +1703,7 @@ function App() {
               {/* Quick Actions */}
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                 {['track','add','export'].filter(t=>t!==activeTab).slice(0,2).map(t=>(
-                  <button key={t} onClick={()=>setActiveTab(t)} className="btn-secondary" style={{padding:'8px 16px',borderRadius:10,fontSize:12}}>
+                  <button key={t} onClick={()=>{setActiveTab(t);window.scrollTo({top:0,behavior:'instant'});}} className="btn-secondary" style={{padding:'8px 16px',borderRadius:10,fontSize:12}}>
                     {sidebarItems.find(s=>s.id===t)?.icon} {sidebarItems.find(s=>s.id===t)?.label}
                   </button>
                 ))}
@@ -1701,20 +1711,220 @@ function App() {
             </div>
           </div>
 
-        {/* TRACK TAB */}
-        {activeTab==='track' && (
-          <div style={{maxWidth:1200}}>
-            {/* Search panel */}
-            <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'22px',marginBottom:20}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16}}>
-                <div style={{fontSize:18}}>🔍</div>
-                <div>
-                  <div style={{fontFamily:'var(--font-display)',fontSize:14,fontWeight:700,color:'var(--text-primary)',letterSpacing:1,textTransform:'uppercase'}}>Find a Vehicle</div>
-                  <div style={{fontSize:10,color:'var(--text-muted)',marginTop:1}}>Search by chassis, VMS number, model, project, or location</div>
+        {/* FLEET OVERVIEW TAB */}
+        {activeTab==='fleet' && (()=>{
+          const activeVehicles = vehicles.filter(v => !isScrapped(v));
+          const scrappedVehicles = vehicles.filter(v => isScrapped(v));
+          const totalActive = activeVehicles.length;
+          const totalScrapped = scrappedVehicles.length;
+
+          // Batch breakdown
+          const batches = ['Production','Pilot 2','Pilot','Pre Pilot','Proto 2','Proto 1','Mule'];
+          const batchColors = {
+            'Production':'#10b981','Pilot 2':'#3b82f6','Pilot':'#1d4ed8',
+            'Pre Pilot':'#8b5cf6','Proto 2':'#f59e0b','Proto 1':'#ef4444','Mule':'#64748b'
+          };
+          const batchCounts = batches.map(b=>({
+            batch:b, count:activeVehicles.filter(v=>v.batch===b).length, color:batchColors[b]
+          })).filter(b=>b.count>0);
+
+          // Team breakdown
+          const teams = ['VA','EEE','Engine','CAL','Styling','ODT','Service','For Other Dept'];
+          const teamColors = ['#ff6600','#3b82f6','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ef4444','#64748b'];
+          const teamCounts = teams.map((t,i)=>({
+            team:t, count:activeVehicles.filter(v=>(v.team_ownership||'').trim()===t).length, color:teamColors[i]
+          })).filter(t=>t.count>0);
+          const unassigned = activeVehicles.filter(v=>!v.team_ownership||!v.team_ownership.trim()).length;
+
+          // Top locations
+          const locMap = {};
+          activeVehicles.forEach(v=>{const l=(v.location||'').trim();if(l)locMap[l]=(locMap[l]||0)+1;});
+          const topLocs = Object.entries(locMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+          // Top models
+          const modMap = {};
+          vehicles.forEach(v=>{const m=(v.model_name||'').trim();if(m)modMap[m]=(modMap[m]||0)+1;});
+          const topModels = Object.entries(modMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+          // Recent additions (last 10 by date)
+          const recentVehicles = [...vehicles]
+            .filter(v=>v.date)
+            .sort((a,b)=>new Date(b.date)-new Date(a.date))
+            .slice(0,8);
+
+          const maxLoc = topLocs[0]?.[1]||1;
+
+          return (
+            <div style={{maxWidth:1300}}>
+              {/* KPI Cards */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:14,marginBottom:24}}>
+                {[
+                  {label:'Total Fleet',value:vehicles.length,icon:'🏍',cls:'orange',color:'var(--orange)',sub:'all registered vehicles'},
+                  {label:'Active Vehicles',value:totalActive,icon:'✅',cls:'green',color:'var(--green)',sub:'currently operational'},
+                  {label:'Pending / Scrapped',value:totalScrapped,icon:'🔴',cls:'red',color:'var(--red)',sub:'decommissioned'},
+                  {label:'Projects',value:[...new Set(vehicles.map(v=>v.project).filter(Boolean))].length,icon:'📁',cls:'blue',color:'var(--blue)',sub:'active projects'},
+                  {label:'Unique Models',value:[...new Set(vehicles.map(v=>v.model_name).filter(Boolean))].length,icon:'🔖',cls:'purple',color:'var(--purple)',sub:'model variants'},
+                  {label:'Departments',value:Object.keys(locMap).length,icon:'🏢',cls:'yellow',color:'var(--yellow)',sub:'locations in use'},
+                ].map(c=>(
+                  <div key={c.label} className={`stat-card ${c.cls}`}>
+                    <div style={{position:'absolute',top:14,right:14,fontSize:20,opacity:0.15}}>{c.icon}</div>
+                    <div style={{fontSize:9,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:2,marginBottom:8,fontWeight:700,fontFamily:'var(--font-display)'}}>{c.label}</div>
+                    <div style={{fontSize:36,fontWeight:900,color:c.color,lineHeight:1,fontFamily:'var(--font-display)'}}>{c.value}</div>
+                    <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:6}}>{c.sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Row 1: Batch Distribution + Team Ownership */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+                {/* Batch Distribution */}
+                <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'20px'}}>
+                  <div style={{fontFamily:'var(--font-display)',fontSize:13,fontWeight:700,color:'var(--text-primary)',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Fleet by Batch</div>
+                  <div style={{fontSize:10,color:'var(--text-muted)',marginBottom:16}}>{totalActive} active vehicles</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                    {batchCounts.map(b=>(
+                      <div key={b.batch}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                          <span style={{fontSize:11,color:'var(--text-secondary)',fontWeight:600}}>{b.batch}</span>
+                          <span style={{fontSize:12,fontWeight:800,color:b.color,fontFamily:'var(--font-display)'}}>{b.count} <span style={{fontSize:10,color:'var(--text-muted)',fontWeight:400}}>({((b.count/totalActive)*100).toFixed(0)}%)</span></span>
+                        </div>
+                        <div style={{height:6,background:'rgba(255,255,255,0.06)',borderRadius:4,overflow:'hidden'}}>
+                          <div style={{height:'100%',width:`${(b.count/totalActive)*100}%`,background:b.color,borderRadius:4,boxShadow:`0 0 8px ${b.color}88`,transition:'width 0.5s ease'}}/>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Team Ownership */}
+                <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'20px'}}>
+                  <div style={{fontFamily:'var(--font-display)',fontSize:13,fontWeight:700,color:'var(--text-primary)',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Fleet by Team</div>
+                  <div style={{fontSize:10,color:'var(--text-muted)',marginBottom:16}}>{unassigned} unassigned · {teamCounts.reduce((a,b)=>a+b.count,0)} assigned</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                    {teamCounts.map(t=>(
+                      <div key={t.team}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                          <span style={{fontSize:11,color:'var(--text-secondary)',fontWeight:600}}>{t.team}</span>
+                          <span style={{fontSize:12,fontWeight:800,color:t.color,fontFamily:'var(--font-display)'}}>{t.count} <span style={{fontSize:10,color:'var(--text-muted)',fontWeight:400}}>({((t.count/totalActive)*100).toFixed(0)}%)</span></span>
+                        </div>
+                        <div style={{height:6,background:'rgba(255,255,255,0.06)',borderRadius:4,overflow:'hidden'}}>
+                          <div style={{height:'100%',width:`${(t.count/totalActive)*100}%`,background:t.color,borderRadius:4,boxShadow:`0 0 8px ${t.color}88`,transition:'width 0.5s ease'}}/>
+                        </div>
+                      </div>
+                    ))}
+                    {unassigned>0&&(
+                      <div>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                          <span style={{fontSize:11,color:'var(--text-muted)',fontWeight:600}}>Unassigned</span>
+                          <span style={{fontSize:12,fontWeight:800,color:'var(--text-muted)',fontFamily:'var(--font-display)'}}>{unassigned}</span>
+                        </div>
+                        <div style={{height:6,background:'rgba(255,255,255,0.06)',borderRadius:4,overflow:'hidden'}}>
+                          <div style={{height:'100%',width:`${(unassigned/totalActive)*100}%`,background:'#334155',borderRadius:4}}/>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div style={{display:'flex',gap:6,marginBottom:18,flexWrap:'wrap'}}>
-                {[{id:'chassis',label:'Chassis'},{id:'vms',label:'VMS No'},{id:'model',label:'Model'},{id:'project',label:'Project'},{id:'location',label:'Location'}].map(m=>(
+
+              {/* Row 2: Top Locations + Top Models */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+                {/* Top Locations */}
+                <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'20px'}}>
+                  <div style={{fontFamily:'var(--font-display)',fontSize:13,fontWeight:700,color:'var(--text-primary)',letterSpacing:1,textTransform:'uppercase',marginBottom:16}}>Top Locations by Count</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                    {topLocs.map(([loc,cnt],i)=>(
+                      <div key={loc} style={{display:'flex',alignItems:'center',gap:10}}>
+                        <span style={{fontSize:10,color:'var(--text-muted)',width:16,textAlign:'right',fontFamily:'var(--font-mono)'}}>{i+1}</span>
+                        <div style={{flex:1}}>
+                          <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+                            <span style={{fontSize:11,color:'var(--cyan)',fontWeight:600}}>{loc}</span>
+                            <span style={{fontSize:11,fontWeight:800,color:'var(--text-primary)',fontFamily:'var(--font-display)'}}>{cnt}</span>
+                          </div>
+                          <div style={{height:4,background:'rgba(255,255,255,0.06)',borderRadius:4,overflow:'hidden'}}>
+                            <div style={{height:'100%',width:`${(cnt/maxLoc)*100}%`,background:`hsl(${180+i*20},70%,50%)`,borderRadius:4}}/>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Top Models */}
+                <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'20px'}}>
+                  <div style={{fontFamily:'var(--font-display)',fontSize:13,fontWeight:700,color:'var(--text-primary)',letterSpacing:1,textTransform:'uppercase',marginBottom:16}}>Top Models by Fleet Size</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                    {topModels.map(([model,cnt],i)=>{
+                      const maxM=topModels[0][1];
+                      const modelColors=['#ff6600','#3b82f6','#10b981','#f59e0b','#8b5cf6','#06b6d4'];
+                      return (
+                        <div key={model} style={{display:'flex',alignItems:'center',gap:10}}>
+                          <div style={{width:28,height:28,borderRadius:8,background:`${modelColors[i]}22`,border:`1px solid ${modelColors[i]}44`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                            <span style={{fontSize:12,fontWeight:900,color:modelColors[i],fontFamily:'var(--font-display)'}}>{cnt}</span>
+                          </div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:11,color:'var(--text-secondary)',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{model}</div>
+                            <div style={{height:3,background:'rgba(255,255,255,0.06)',borderRadius:4,overflow:'hidden',marginTop:4}}>
+                              <div style={{height:'100%',width:`${(cnt/maxM)*100}%`,background:modelColors[i],borderRadius:4}}/>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',overflow:'hidden'}}>
+                <div style={{padding:'16px 20px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <div style={{fontFamily:'var(--font-display)',fontSize:13,fontWeight:700,color:'var(--text-primary)',letterSpacing:1,textTransform:'uppercase'}}>Recently Updated Vehicles</div>
+                  <span style={{fontSize:10,color:'var(--text-muted)'}}>Sorted by date · Top 8</span>
+                </div>
+                <div style={{overflowX:'auto'}}>
+                  <table className='premium-table'>
+                    <thead>
+                      <tr>
+                        {['#','VMS No','Model','Project','Batch','Location','Team','Updated'].map(h=><th key={h}>{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentVehicles.map((v,i)=>(
+                        <tr key={v.id+'-fleet-'+i}>
+                          <td style={{color:'var(--text-muted)',fontSize:11}}>{i+1}</td>
+                          <td style={{color:'#ffa040',fontFamily:'var(--font-mono)',fontSize:11}}>{v.vms_no||'—'}</td>
+                          <td style={{fontWeight:600,color:'var(--text-primary)'}}>{v.model_name||'—'}</td>
+                          <td style={{color:'var(--text-muted)',fontSize:11}}>{v.project||'—'}</td>
+                          <td><span style={{background:batchColor(v.batch||''),color:'#fff',padding:'2px 8px',borderRadius:20,fontSize:10,fontWeight:600}}>{v.batch||'—'}</span></td>
+                          <td style={{color:'var(--cyan)',fontSize:11}}>{v.location||'—'}</td>
+                          <td><span style={{background:'rgba(255,102,0,0.15)',color:'var(--orange)',padding:'2px 8px',borderRadius:20,fontSize:10,fontWeight:600,border:'1px solid rgba(255,102,0,0.3)'}}>{v.team_ownership||'—'}</span></td>
+                          <td style={{color:'var(--text-muted)',fontSize:11}}>{formatDate(v.date)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* TRACK TAB */}
+        {activeTab==='track' && (
+          <div style={{maxWidth:900}}>
+            {/* Search panel */}
+            <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'28px',marginBottom:20}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20}}>
+                <div style={{background:'linear-gradient(135deg,#cc4400,var(--orange))',borderRadius:10,width:40,height:40,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 4px 16px var(--orange-glow)',flexShrink:0}}>
+                  <span style={{fontSize:20}}>🔍</span>
+                </div>
+                <div>
+                  <div style={{fontFamily:'var(--font-display)',fontSize:16,fontWeight:700,color:'var(--text-primary)',letterSpacing:1,textTransform:'uppercase'}}>Find a Vehicle</div>
+                  <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Search by chassis number, VMS No, model, project, or location</div>
+                </div>
+              </div>
+              <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
+                {[{id:'chassis',label:'🔢 Chassis'},{id:'vms',label:'📄 VMS No'},{id:'model',label:'🏍 Model'},{id:'project',label:'📁 Project'},{id:'location',label:'📍 Location'}].map(m=>(
                   <button key={m.id} onClick={()=>{setSearchMode(m.id);setSearchQ('');setVmsQ(['','','','','','','','']);setSearched(false);setSearchResult(null);}}
                     className={`search-pill ${searchMode===m.id?'active':'inactive'}`}>
                     {m.label}
@@ -1816,73 +2026,6 @@ function App() {
                 </div>
               )}
             </div>
-
-            {/* Fleet Overview Stats */}
-            {(()=>{
-              const activeVehicles = vehicles.filter(v => !isScrapped(v));
-              const va=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='VA').length;
-              const eee=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='EEE').length;
-              const cal=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='CAL').length;
-              const svc=activeVehicles.filter(v=>(v.team_ownership||'').trim()==='Service').length;
-              const uniq=[...new Set(activeVehicles.map(v=>v.model_name).filter(Boolean))].length;
-              const cards = [
-                {label:'Total Fleet',value:activeVehicles.length,color:'var(--orange)',cls:'orange',icon:'🏍',sub:'Active vehicles'},
-                {label:'VA Team',value:va,color:'var(--blue)',cls:'blue',icon:'🔧',sub:'Validation & Analysis'},
-                {label:'EEE Team',value:eee,color:'var(--purple)',cls:'purple',icon:'⚡',sub:'Electrical & Electronics'},
-                {label:'CAL Team',value:cal,color:'var(--green)',cls:'green',icon:'📐',sub:'Calibration'},
-                {label:'Service',value:svc,color:'var(--yellow)',cls:'yellow',icon:'🛠',sub:'Service Department'},
-                {label:'Models',value:uniq,color:'var(--red)',cls:'red',icon:'📋',sub:'Unique Models'},
-              ];
-              return (
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:14,marginBottom:20}}>
-                  {cards.map(s=>(
-                    <div key={s.label} className={`stat-card ${s.cls}`}>
-                      <div style={{position:'absolute',top:14,right:14,fontSize:22,opacity:0.15}}>{s.icon}</div>
-                      <div style={{fontSize:9,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:2,marginBottom:8,fontWeight:700,fontFamily:'var(--font-display)'}}>{s.label}</div>
-                      <div style={{fontSize:36,fontWeight:900,color:s.color,lineHeight:1,fontFamily:'var(--font-display)'}}>{s.value}</div>
-                      <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:6}}>{s.sub}</div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-
-            {/* Fleet Distribution Bar */}
-            {(()=>{
-              const batches=['Production','Pilot 2','Pilot','Pre Pilot','Proto 2','Proto 1','Mule'];
-              const colors=['#10b981','#3b82f6','#1d4ed8','#8b5cf6','#f59e0b','#ef4444','#64748b'];
-              const glows=['rgba(16,185,129,0.6)','rgba(59,130,246,0.6)','rgba(29,78,216,0.6)','rgba(139,92,246,0.6)','rgba(245,158,11,0.6)','rgba(239,68,68,0.6)','rgba(100,116,139,0.6)'];
-              const activeV = vehicles.filter(v => !isScrapped(v));
-              const counts=batches.map(b=>activeV.filter(v=>v.batch===b).length);
-              const total = counts.reduce((a,b)=>a+b,0);
-              return (
-                <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'18px 20px',marginBottom:20}}>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-                    <div>
-                      <div style={{fontFamily:'var(--font-display)',fontSize:13,fontWeight:700,color:'var(--text-primary)',letterSpacing:1,textTransform:'uppercase'}}>Fleet Distribution by Batch</div>
-                      <div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>{total} active vehicles across {batches.filter((_,i)=>counts[i]>0).length} batch types</div>
-                    </div>
-                  </div>
-                  {/* Segmented progress bar */}
-                  <div style={{display:'flex',gap:3,borderRadius:10,overflow:'hidden',height:10,marginBottom:14,background:'rgba(255,255,255,0.05)'}}>
-                    {batches.map((b,i)=>counts[i]>0&&(
-                      <div key={b} style={{flex:counts[i],background:colors[i],borderRadius:4,transition:'all 0.3s',cursor:'default',boxShadow:`0 0 8px ${glows[i]}`}} title={`${b}: ${counts[i]}`}/>
-                    ))}
-                  </div>
-                  {/* Legend */}
-                  <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
-                    {batches.map((b,i)=>counts[i]>0&&(
-                      <div key={b} style={{display:'flex',alignItems:'center',gap:6}}>
-                        <div style={{width:10,height:10,borderRadius:3,background:colors[i],boxShadow:`0 0 6px ${glows[i]}`}}/>
-                        <span style={{fontSize:10,color:'var(--text-muted)'}}>{b}</span>
-                        <span style={{fontSize:11,fontWeight:800,color:'var(--text-secondary)',fontFamily:'var(--font-display)'}}>{counts[i]}</span>
-                        <span style={{fontSize:9,color:'var(--text-muted)'}}>{((counts[i]/total)*100).toFixed(0)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
 
             {/* Chassis result */}
             {searched && searchResult && searchMode==='chassis' && searchResult.length===1 && (()=>{
@@ -2267,6 +2410,11 @@ function App() {
                           </select>
                         );
                       })()
+                    ):key==='team_ownership'?(
+                      <select value={addForm.team_ownership} onChange={e=>setAddForm(f=>({...f,team_ownership:e.target.value}))} className='edit-form-input' style={{cursor:'pointer'}}>
+                        <option value="">Select Team</option>
+                        {TEAM_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
+                      </select>
                     ):(
                       <input value={addForm[key]} onChange={e=>setAddForm(f=>({...f,[key]:e.target.value}))} type={key==='date'?'date':'text'} className='edit-form-input' style={{fontFamily:key==='chassis_number'||key==='engine_number'?'var(--font-mono)':'inherit'}}/>
                     )}
@@ -2675,7 +2823,7 @@ function App() {
           {sidebarItems.map(item => (
             <div key={item.id}
               className={`mobile-nav-item ${activeTab===item.id?'active':''}`}
-              onClick={()=>setActiveTab(item.id)}>
+              onClick={()=>{setActiveTab(item.id);window.scrollTo({top:0,behavior:'instant'});}}>
               <span className="nav-icon">{item.icon}</span>
               <span className="nav-label">{item.label.split(' ')[0]}</span>
             </div>
