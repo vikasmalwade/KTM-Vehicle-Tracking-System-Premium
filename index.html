@@ -46,7 +46,7 @@
       --radius-sm: 12px;
       --radius-xs: 8px;
       --sidebar-width: 240px;
-      --header-height: 70px;
+      --header-height: 80px;
       --font-display: 'Outfit', 'Segoe UI', sans-serif;
       --font-body: 'Nunito', 'Segoe UI', sans-serif;
       --font-mono: 'Share Tech Mono', 'Courier New', monospace;
@@ -376,16 +376,16 @@
     .page-header { margin-bottom: 32px; }
     .page-title {
       font-family: var(--font-display);
-      font-size: 22px;
+      font-size: 26px;
       font-weight: 800;
       color: var(--text-primary);
       letter-spacing: 0.5px;
       line-height: 1;
     }
     .page-subtitle {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--text-muted);
-      margin-top: 7px;
+      margin-top: 8px;
       font-weight: 400;
     }
 
@@ -620,7 +620,7 @@
       display: none;
       position: fixed;
       bottom: 0; left: 0; right: 0;
-      height: 82px;
+      height: 95px;
       background: rgba(6,8,16,0.98);
       border-top: 1px solid rgba(255,102,0,0.22);
       z-index: 300;
@@ -2391,14 +2391,14 @@ function App() {
       <header className="app-header">
         {/* Logo */}
         <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
-          <div style={{background:'linear-gradient(135deg,#cc4400,var(--orange))',borderRadius:10,padding:'6px 12px',boxShadow:'0 4px 20px var(--orange-glow)',flexShrink:0}}>
-            <span style={{fontFamily:'var(--font-display)',fontWeight:900,fontSize:20,color:'white',letterSpacing:4}}>KTM</span>
+          <div style={{background:'linear-gradient(135deg,#cc4400,var(--orange))',borderRadius:10,padding:'7px 14px',boxShadow:'0 4px 20px var(--orange-glow)',flexShrink:0}}>
+            <span style={{fontFamily:'var(--font-display)',fontWeight:900,fontSize:22,color:'white',letterSpacing:4}}>KTM</span>
           </div>
           <div style={{minWidth:0}}>
-            <div style={{fontFamily:'var(--font-display)',fontSize:14,fontWeight:700,color:'var(--text-primary)',letterSpacing:1.5,textTransform:'uppercase',lineHeight:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'180px'}}>
+            <div style={{fontFamily:'var(--font-display)',fontSize:16,fontWeight:700,color:'var(--text-primary)',letterSpacing:1.5,textTransform:'uppercase',lineHeight:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'180px'}}>
               Vehicle <span style={{color:'var(--orange)'}}>Tracking</span>
             </div>
-            <div style={{fontSize:9,color:'var(--text-muted)',letterSpacing:1.5,textTransform:'uppercase',marginTop:3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'180px'}}>R&D · Bajaj Auto Ltd.</div>
+            <div style={{fontSize:10,color:'var(--text-muted)',letterSpacing:1.5,textTransform:'uppercase',marginTop:3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'180px'}}>R&D · Bajaj Auto Ltd.</div>
           </div>
         </div>
 
