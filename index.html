@@ -503,6 +503,8 @@
       animation: fadeIn 0.18s ease;
     }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes loadbar { 0% { width: 0%; margin-left: 0; } 50% { width: 70%; margin-left: 15%; } 100% { width: 0%; margin-left: 100%; } }
     .modal-card {
       background: rgba(11,15,29,0.99);
       border: 1px solid rgba(255,102,0,0.28);
@@ -966,6 +968,15 @@ function App() {
   const [toast, setToast] = useState(null);
   const [notifyModal, setNotifyModal] = useState(null);
   const [importModal, setImportModal] = useState(null); // {rows, added, skipped, preview}
+
+  // ── Full Data Import (Reset) feature state ─────────────────────────────────
+  const [fullImportStep, setFullImportStep] = useState(null); // null | 'pin' | 'confirm' | 'loading' | 'done'
+  const [fullImportPin, setFullImportPin] = useState('');
+  const [fullImportPinError, setFullImportPinError] = useState('');
+  const [fullImportCount, setFullImportCount] = useState(0);
+  const [fullImportError, setFullImportError] = useState('');
+  const fullImportFileRef = React.useRef(null);
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const showToast = useCallback((msg, type='success') => {
     setToast({msg, type});
@@ -1516,6 +1527,205 @@ function App() {
     }
   };
 
+  // ── Full Data Import: Modular Functions ──────────────────────────────────────
+
+  /** Step 1 — open the PIN modal */
+  const openFullImportFlow = () => {
+    setFullImportStep('pin');
+    setFullImportPin('');
+    setFullImportPinError('');
+    setFullImportError('');
+  };
+
+  /** Step 2 — validate PIN */
+  const validatePIN = () => {
+    if (fullImportPin.trim() === '2908') {
+      setFullImportStep('confirm');
+      setFullImportPinError('');
+    } else {
+      setFullImportPinError('Unauthorized Access');
+    }
+  };
+
+  /** Step 3 — clear all vehicle data */
+  const clearAllData = () => {
+    setVehicles([]);
+    // Also clear any search results / edit state
+    setSearchResult(null);
+    setSearched(false);
+    setSearchQ('');
+    setVmsQ(['','','','','','','','']);
+    setEditingVehicleId(null);
+    setVehicleForm({});
+  };
+
+  /** Step 4 — process incoming Excel rows into vehicle records */
+  const processData = (rows) => {
+    const norm = (s) => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const colMap = {
+      vms_no:         ['vmsno','vms no','vms_no','vms number'],
+      project:        ['project','proj'],
+      model_name:     ['modelname','model name','model_name','model'],
+      make:           ['make'],
+      batch:          ['batch'],
+      chassis_number: ['chassisnumber','chassis number','chassis_number','chassis no','chassisno','chassis'],
+      engine_number:  ['enginenumber','engine number','engine_number','engine no','engineno','engine'],
+      location:       ['location','loc'],
+      parking_spot:   ['parkingspot','parking spot','parking_spot','parking'],
+      test:           ['test'],
+      current_status: ['currentstatus','current status','current_status','status'],
+      date:           ['date'],
+      team_ownership: ['teamownership','team ownership','team_ownership','team'],
+    };
+    const headers = Object.keys(rows[0]);
+    const getField = (row, fieldKey) => {
+      const aliases = colMap[fieldKey];
+      for (const h of headers) {
+        if (aliases.includes(norm(h))) return String(row[h]||'').trim();
+      }
+      return '';
+    };
+
+    const seenChassis = new Set();
+    const processed = [];
+
+    rows.forEach((row, idx) => {
+      // Skip blank rows
+      const isBlank = Object.values(row).every(v => !String(v||'').trim());
+      if (isBlank) return;
+
+      const chassis = getField(row, 'chassis_number');
+      if (!chassis) return; // skip rows without chassis
+
+      const chassisUpper = chassis.toUpperCase();
+      if (seenChassis.has(chassisUpper)) return; // deduplicate
+      seenChassis.add(chassisUpper);
+
+      processed.push({
+        id: idx + 1,
+        vms_no:         getField(row, 'vms_no'),
+        project:        getField(row, 'project'),
+        model_name:     getField(row, 'model_name'),
+        make:           getField(row, 'make'),
+        batch:          getField(row, 'batch'),
+        chassis_number: chassis,
+        engine_number:  getField(row, 'engine_number'),
+        location:       getField(row, 'location'),
+        parking_spot:   getField(row, 'parking_spot'),
+        test:           getField(row, 'test'),
+        current_status: getField(row, 'current_status'),
+        date:           getField(row, 'date'),
+        team_ownership: getField(row, 'team_ownership'),
+        owner: '',
+        test_purpose: '',
+      });
+    });
+
+    return processed;
+  };
+
+  /** Step 5 — update UI after import */
+  const updateUI = (count) => {
+    setFullImportCount(count);
+    setFullImportStep('done');
+  };
+
+  /** Main import handler — triggered by file picker */
+  const importExcel = (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['xlsx','xls'].includes(ext)) {
+      setFullImportError('Please upload a valid Excel file (.xlsx or .xls)');
+      setFullImportStep('confirm');
+      return;
+    }
+
+    setFullImportStep('loading');
+    setFullImportError('');
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      // Use setTimeout to avoid UI freeze on large files
+      setTimeout(() => {
+        try {
+          const wb = XLSX.read(evt.target.result, { type: 'binary', cellDates: true });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+
+          if (!rows.length) {
+            setFullImportError('No data found in the file');
+            setFullImportStep('confirm');
+            return;
+          }
+
+          // Clear old data first
+          clearAllData();
+
+          // Process & deduplicate
+          const newData = processData(rows);
+
+          if (!newData.length) {
+            setFullImportError('No valid records found — ensure Chassis Number column exists');
+            setFullImportStep('confirm');
+            return;
+          }
+
+          // Re-assign sequential IDs
+          const finalData = newData.map((v, i) => ({ ...v, id: i + 1 }));
+
+          setVehicles(finalData);
+          updateUI(finalData.length);
+          showToast(`✅ New data imported successfully — ${finalData.length} records`, 'success');
+        } catch (err) {
+          setFullImportError('Import failed. Check file format: ' + (err.message || 'Unknown error'));
+          setFullImportStep('confirm');
+        }
+      }, 50);
+    };
+    reader.onerror = () => {
+      setFullImportError('Import failed. Could not read the file.');
+      setFullImportStep('confirm');
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  /** Export current data as backup before reset */
+  const exportBackupBeforeReset = async () => {
+    if (!vehicles.length) { showToast('No data to backup', 'error'); return; }
+    const headers = ['ID','VMS No','Project','Model Name','Make','Batch','Chassis Number','Engine Number',
+      'Location','Parking Spot','Test','Current Status','Date','Team Ownership'];
+    const ws = XLSX.utils.aoa_to_sheet([
+      headers,
+      ...vehicles.map(v => [v.id,v.vms_no,v.project,v.model_name,v.make,v.batch,
+        v.chassis_number,v.engine_number,v.location,v.parking_spot,
+        v.test,v.current_status,v.date,v.team_ownership])
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Backup');
+    const wbout = XLSX.write(wb, { bookType:'xlsx', type:'base64' });
+    const filename = 'KTM_Backup_' + new Date().toISOString().slice(0,10);
+    const a = document.createElement('a');
+    a.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + wbout;
+    a.download = filename + '.xlsx';
+    a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => document.body.removeChild(a), 500);
+    showToast(`Backup saved (${vehicles.length} records)`);
+  };
+
+  /** Close / reset the full import flow */
+  const closeFullImport = () => {
+    setFullImportStep(null);
+    setFullImportPin('');
+    setFullImportPinError('');
+    setFullImportError('');
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const handleLogin = () => {
     const pw = loginPassword.trim();
     if (loginRole === 'admin' && pw === adminPassword) { setCurrentUser('admin'); setLoginError(''); setLoginPassword(''); }
@@ -1815,6 +2025,153 @@ function App() {
         </div>
       )}
 
+      {/* ========= FULL DATA IMPORT MODAL ========= */}
+      {fullImportStep && (
+        <div className="modal-overlay" style={{zIndex:10800}}>
+          <div className="modal-card" style={{width:400,maxWidth:'95vw',padding:'32px',position:'relative',overflow:'visible'}}>
+
+            {/* Header */}
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:24}}>
+              <div style={{width:40,height:40,borderRadius:10,background:'linear-gradient(135deg,#7a0000,#ef4444)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0,boxShadow:'0 4px 16px rgba(239,68,68,0.4)'}}>⚠️</div>
+              <div>
+                <div style={{fontSize:14,fontWeight:900,color:'#f87171',fontFamily:'var(--font-display)',letterSpacing:1,textTransform:'uppercase'}}>Import New Data</div>
+                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:2,letterSpacing:0.5}}>Reset Existing · Full Overwrite</div>
+              </div>
+              {fullImportStep !== 'loading' && (
+                <button onClick={closeFullImport} style={{marginLeft:'auto',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',color:'#f87171',width:30,height:30,borderRadius:'50%',cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,transition:'all 0.2s',flexShrink:0}}>✕</button>
+              )}
+            </div>
+
+            {/* ── STEP: PIN ── */}
+            {fullImportStep === 'pin' && (
+              <>
+                <div style={{background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:10,padding:'14px 16px',marginBottom:20,fontSize:12,color:'rgba(248,113,113,0.85)',lineHeight:1.6}}>
+                  🔐 This action is restricted. Enter the security PIN to continue.
+                </div>
+                <div style={{marginBottom:6,fontSize:9,color:'var(--orange)',textTransform:'uppercase',letterSpacing:2,fontWeight:700,fontFamily:'var(--font-display)'}}>Security PIN</div>
+                <input
+                  type="password"
+                  value={fullImportPin}
+                  onChange={e=>setFullImportPin(e.target.value)}
+                  onKeyDown={e=>e.key==='Enter'&&validatePIN()}
+                  placeholder="Enter 4-digit PIN"
+                  autoFocus
+                  style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,0.04)',border:`1px solid ${fullImportPinError?'rgba(239,68,68,0.6)':'rgba(255,255,255,0.1)'}`,borderRadius:10,padding:'14px',color:'var(--text-primary)',fontSize:22,outline:'none',letterSpacing:10,textAlign:'center',marginBottom:10,transition:'border-color 0.2s',fontFamily:'var(--font-mono)'}}
+                  onFocus={e=>e.target.style.borderColor='rgba(239,68,68,0.5)'}
+                  onBlur={e=>e.target.style.borderColor=fullImportPinError?'rgba(239,68,68,0.6)':'rgba(255,255,255,0.1)'}
+                />
+                {fullImportPinError && (
+                  <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.4)',color:'#f87171',padding:'9px 14px',borderRadius:8,fontSize:12,marginBottom:14,textAlign:'center',fontWeight:700}}>
+                    🚫 {fullImportPinError}
+                  </div>
+                )}
+                <div style={{display:'flex',gap:8,marginTop:4}}>
+                  <button onClick={validatePIN}
+                    style={{flex:2,background:'linear-gradient(135deg,#7a0000,#ef4444)',border:'none',color:'#fff',padding:'11px',borderRadius:10,cursor:'pointer',fontWeight:800,fontSize:13,fontFamily:'var(--font-display)',letterSpacing:1,boxShadow:'0 4px 14px rgba(239,68,68,0.35)',transition:'all 0.2s'}}
+                    onMouseEnter={e=>e.currentTarget.style.transform='translateY(-1px)'}
+                    onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
+                    Verify PIN →
+                  </button>
+                  <button onClick={closeFullImport} className="btn-secondary" style={{flex:1,padding:'11px',borderRadius:10}}>Cancel</button>
+                </div>
+              </>
+            )}
+
+            {/* ── STEP: CONFIRM ── */}
+            {fullImportStep === 'confirm' && (
+              <>
+                <div style={{background:'rgba(239,68,68,0.09)',border:'1px solid rgba(239,68,68,0.35)',borderRadius:12,padding:'18px',marginBottom:20}}>
+                  <div style={{fontSize:13,fontWeight:800,color:'#f87171',marginBottom:8,fontFamily:'var(--font-display)',display:'flex',alignItems:'center',gap:6}}>
+                    <span style={{fontSize:18}}>🗑️</span> PERMANENT DATA DELETION WARNING
+                  </div>
+                  <div style={{fontSize:12,color:'rgba(248,113,113,0.8)',lineHeight:1.7}}>
+                    This will <strong style={{color:'#f87171'}}>delete ALL existing vehicle data permanently</strong> and replace it with new imported data. No old chassis numbers will remain.
+                  </div>
+                  <div style={{marginTop:10,fontSize:11,color:'rgba(248,113,113,0.6)',fontStyle:'italic'}}>
+                    Do you want to continue?
+                  </div>
+                </div>
+
+                {/* Backup option */}
+                {vehicles.length > 0 && (
+                  <div style={{background:'rgba(245,158,11,0.07)',border:'1px solid rgba(245,158,11,0.25)',borderRadius:10,padding:'12px 14px',marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}}>
+                    <div style={{fontSize:11,color:'rgba(253,211,77,0.8)',lineHeight:1.5}}>
+                      💾 <strong>Optional:</strong> Backup your {vehicles.length} current records before deleting
+                    </div>
+                    <button onClick={exportBackupBeforeReset}
+                      style={{background:'rgba(245,158,11,0.15)',border:'1px solid rgba(245,158,11,0.4)',color:'var(--yellow)',padding:'7px 12px',borderRadius:8,cursor:'pointer',fontWeight:700,fontSize:11,fontFamily:'var(--font-display)',letterSpacing:0.5,flexShrink:0,transition:'all 0.2s'}}
+                      onMouseEnter={e=>e.currentTarget.style.background='rgba(245,158,11,0.25)'}
+                      onMouseLeave={e=>e.currentTarget.style.background='rgba(245,158,11,0.15)'}>
+                      ⬇️ Backup
+                    </button>
+                  </div>
+                )}
+
+                {/* Error display */}
+                {fullImportError && (
+                  <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.4)',color:'#f87171',padding:'10px 14px',borderRadius:8,fontSize:12,marginBottom:14,textAlign:'center'}}>
+                    ❌ {fullImportError}
+                  </div>
+                )}
+
+                {/* Hidden file input */}
+                <input
+                  ref={fullImportFileRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  style={{display:'none'}}
+                  onChange={importExcel}
+                />
+
+                <div style={{display:'flex',gap:8}}>
+                  <button
+                    onClick={()=>{ setFullImportError(''); fullImportFileRef.current && fullImportFileRef.current.click(); }}
+                    style={{flex:2,background:'linear-gradient(135deg,#7a0000,#ef4444)',border:'none',color:'#fff',padding:'12px',borderRadius:10,cursor:'pointer',fontWeight:800,fontSize:13,fontFamily:'var(--font-display)',letterSpacing:1,boxShadow:'0 4px 14px rgba(239,68,68,0.35)',transition:'all 0.2s'}}
+                    onMouseEnter={e=>e.currentTarget.style.transform='translateY(-1px)'}
+                    onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
+                    ✅ YES — Proceed & Select File
+                  </button>
+                  <button onClick={closeFullImport} className="btn-secondary" style={{flex:1,padding:'12px',borderRadius:10}}>CANCEL</button>
+                </div>
+              </>
+            )}
+
+            {/* ── STEP: LOADING ── */}
+            {fullImportStep === 'loading' && (
+              <div style={{textAlign:'center',padding:'20px 0'}}>
+                <div style={{fontSize:48,marginBottom:16,animation:'spin 1s linear infinite',display:'inline-block'}}>⟳</div>
+                <div style={{fontSize:15,fontWeight:700,color:'var(--text-primary)',marginBottom:8,fontFamily:'var(--font-display)',letterSpacing:0.5}}>Importing Data...</div>
+                <div style={{fontSize:12,color:'var(--text-muted)',lineHeight:1.6}}>
+                  Reading file and processing records.<br/>Please wait, this may take a moment for large files.
+                </div>
+                <div style={{marginTop:20,height:4,background:'rgba(255,255,255,0.07)',borderRadius:10,overflow:'hidden'}}>
+                  <div style={{height:'100%',background:'linear-gradient(90deg,#ef4444,var(--orange))',borderRadius:10,animation:'loadbar 1.4s ease-in-out infinite'}}></div>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP: DONE ── */}
+            {fullImportStep === 'done' && (
+              <div style={{textAlign:'center',padding:'10px 0'}}>
+                <div style={{width:64,height:64,borderRadius:'50%',background:'rgba(16,185,129,0.15)',border:'2px solid rgba(16,185,129,0.5)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px',fontSize:28,boxShadow:'0 0 24px rgba(16,185,129,0.2)'}}>✅</div>
+                <div style={{fontSize:16,fontWeight:900,color:'var(--green)',marginBottom:8,fontFamily:'var(--font-display)',letterSpacing:1,textTransform:'uppercase'}}>Import Successful!</div>
+                <div style={{fontSize:13,color:'var(--text-secondary)',marginBottom:16,lineHeight:1.6}}>
+                  New data imported successfully
+                </div>
+                <div style={{background:'rgba(16,185,129,0.09)',border:'1px solid rgba(16,185,129,0.3)',borderRadius:12,padding:'16px',marginBottom:20,display:'inline-block',minWidth:200}}>
+                  <div style={{fontSize:36,fontWeight:900,color:'var(--green)',fontFamily:'var(--font-display)',lineHeight:1}}>{fullImportCount}</div>
+                  <div style={{fontSize:10,color:'rgba(52,211,153,0.7)',textTransform:'uppercase',letterSpacing:2,marginTop:4}}>Total Records Imported</div>
+                </div>
+                <button onClick={closeFullImport}
+                  style={{display:'block',width:'100%',background:'linear-gradient(135deg,#065f46,var(--green))',border:'none',color:'#fff',padding:'12px',borderRadius:10,cursor:'pointer',fontWeight:800,fontSize:13,fontFamily:'var(--font-display)',letterSpacing:1,boxShadow:'0 4px 14px rgba(16,185,129,0.3)'}}>
+                  ✓ Done
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Import Preview Modal */}
       {importModal && (
         <div className="modal-overlay" style={{zIndex:10001,overflowY:'auto'}}>
@@ -2014,6 +2371,7 @@ function App() {
         <div className={`badge ${isAdmin?'badge-orange':'badge-blue'}`} style={{fontSize:11,padding:'6px 14px'}}>
           {isAdmin?'🔑 ADMIN':'👁 VIEWER'}
         </div>
+
 
         {/* Switch Button */}
         <button onClick={()=>{setShowSwitchModal(true);setSwitchRole(isAdmin?'viewer':'admin');setSwitchPassword('');setSwitchError('');}}
@@ -3147,6 +3505,28 @@ function App() {
               </div>
             </div>
 
+            {/* Full Reset Import — Admin Only */}
+            {isAdmin && (
+              <div style={{background:'rgba(239,68,68,0.05)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:'var(--radius)',padding:'24px',marginBottom:20}}>
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+                  <div style={{fontSize:20}}>⚠️</div>
+                  <div>
+                    <div style={{fontSize:13,color:'#f87171',fontWeight:800,textTransform:'uppercase',letterSpacing:2,fontFamily:'var(--font-display)'}}>Full Data Import (Reset Existing)</div>
+                    <div style={{fontSize:11,color:'rgba(248,113,113,0.65)',marginTop:2}}>Admin — PIN Protected · Completely replaces all vehicle data</div>
+                  </div>
+                </div>
+                <div style={{fontSize:12,color:'rgba(248,113,113,0.7)',marginBottom:16,lineHeight:1.6}}>
+                  Use this to <strong style={{color:'#f87171'}}>completely wipe</strong> existing fleet data and replace it with a fresh Excel import. Requires security PIN. Backup option available before deletion.
+                </div>
+                <button onClick={openFullImportFlow}
+                  style={{background:'linear-gradient(135deg,rgba(127,0,0,0.8),rgba(239,68,68,0.75))',border:'1px solid rgba(239,68,68,0.5)',color:'#fff',padding:'11px 24px',borderRadius:50,cursor:'pointer',fontWeight:800,fontSize:12,fontFamily:'var(--font-display)',letterSpacing:1,textTransform:'uppercase',boxShadow:'0 4px 16px rgba(239,68,68,0.25)',transition:'all 0.22s'}}
+                  onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(239,68,68,0.35)';}}
+                  onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 4px 16px rgba(239,68,68,0.25)';}}>
+                  ⚠️ Import New Data (Reset Existing)
+                </button>
+              </div>
+            )}
+
             {/* Summary stats before export */}
             <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'20px'}}>
               <div className='section-title' style={{marginBottom:14}}>What's Included in the Export</div>
@@ -3190,10 +3570,10 @@ function App() {
                 </div>
               </div>
               <p style={{fontSize:13,color:'var(--text-secondary)',lineHeight:1.8,maxWidth:700,margin:0}}>
-                This guide walks you through every feature of the KTM Vehicle Tracking System — from searching and editing vehicles to importing data and navigating the dashboard. Designed for both new users and daily operators.
+                Complete guide to every feature of the KTM Vehicle Tracking System — login, search, edit, dashboard, parking maps, notifications, export/import, and more. Covers both Admin and Viewer roles.
               </p>
               <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:18}}>
-                {[['🔍','Search','orange'],['✏️','Edit','blue'],['📊','Dashboard','purple'],['📍','Location','cyan'],['📂','Import','green'],['🧭','Navigate','yellow'],['⚠️','Notes','red']].map(([ico,lbl,clr])=>(
+                {[['🔐','Login','orange'],['🔍','Search','blue'],['✏️','Edit','purple'],['📊','Dashboard','cyan'],['🅿️','Parking','green'],['📲','Notify','yellow'],['⬇️','Export','orange'],['📂','Import','blue'],['➕','Add','purple'],['🏢','Dept','cyan'],['⚠️','Notes','red']].map(([ico,lbl,clr])=>(
                   <span key={lbl} className="guide-tag" style={{background:`rgba(var(--${clr}),0.08)`,border:`1px solid rgba(var(--${clr}),0.25)`,color:`var(--${clr})`}}>
                     {ico} {lbl}
                   </span>
@@ -3201,20 +3581,20 @@ function App() {
               </div>
             </div>
 
-            {/* ── Section 1: Searching a Vehicle ── */}
+            {/* ── Section 1: Login & Roles ── */}
             <div className="guide-section-card guide-card-orange">
-              <div className="guide-section-icon" style={{background:'rgba(255,102,0,0.12)',border:'1px solid rgba(255,102,0,0.25)'}}>🔍</div>
-              <div className="guide-section-title" style={{color:'var(--orange)'}}>1 · Searching a Vehicle</div>
-              <div className="guide-section-desc">Use the Track Vehicles tab to instantly find any vehicle in the fleet. Five search modes are available.</div>
+              <div className="guide-section-icon" style={{background:'rgba(255,102,0,0.12)',border:'1px solid rgba(255,102,0,0.25)'}}>🔐</div>
+              <div className="guide-section-title" style={{color:'var(--orange)'}}>1 · Login &amp; User Roles</div>
+              <div className="guide-section-desc">The app has two roles — Admin and Viewer. Login is required before accessing any feature. Each role has a separate password.</div>
               <div className="guide-steps">
                 {[
-                  ['1','Click <strong>🔍 Track Vehicles</strong> from the left sidebar.'],
-                  ['2','Select a search mode from the pill buttons: <strong>Chassis · VMS No · Model · Project · Location</strong>.'],
-                  ['3','<strong>Chassis Search:</strong> Type the <strong>last 5 digits</strong> of the chassis number (e.g. <code>45370</code>) and press <strong>SEARCH</strong> or hit Enter.'],
-                  ['4','<strong>VMS No Search:</strong> Enter all <strong>8 digits</strong> in the split boxes — format <code>YYYY-NNNN</code> — the app auto-advances between boxes.'],
-                  ['5','<strong>Model / Project / Location:</strong> Pick a value from the dropdown and click SEARCH.'],
-                  ['6','Results appear instantly below the search panel. Scrapped vehicles are shown with a red badge.'],
-                  ['7','After closing or saving, the <strong>search field clears automatically</strong> so you can start a fresh search.'],
+                  ['1','On launch, the <strong>Login screen</strong> appears. Select your role: <strong>Admin</strong> or <strong>Viewer</strong>.'],
+                  ['2','Enter the password for your role and click <strong>Login</strong> (or press Enter).'],
+                  ['3','<strong>Admin role</strong> — Full access: search, view, edit, add vehicles, import data, change passwords, manage dept capacities.'],
+                  ['4','<strong>Viewer role</strong> — Read-only access: search and view all vehicle data, dashboards, and parking maps. No edit or add buttons are visible.'],
+                  ['5','Once logged in, your role badge (<code>ADMIN</code> or <code>VIEWER</code>) is shown in the top-right header at all times.'],
+                  ['6','To switch roles without logging out, click the <strong>🔄 Switch Role</strong> button in the header. Enter the target role\'s password to confirm.'],
+                  ['7','To change passwords (Admin only), click the <strong>🔑 Change Password</strong> button in the header. A PIN is required before you can update passwords.'],
                 ].map(([n,t])=>(
                   <div key={n} className="guide-step">
                     <div className="guide-step-num" style={{background:'rgba(255,102,0,0.2)',color:'var(--orange)'}}>{n}</div>
@@ -3224,25 +3604,25 @@ function App() {
               </div>
               <div className="guide-tip">
                 <span style={{fontSize:16,flexShrink:0}}>💡</span>
-                <span><strong style={{color:'var(--yellow)'}}>Pro Tip:</strong> Chassis search uses the last 5 digits — you don't need the full number. VMS search returns all vehicles in that series.</span>
+                <span><strong style={{color:'var(--yellow)'}}>Default passwords:</strong> Admin → <code>Test@1911</code> &nbsp;|&nbsp; Viewer → <code>Test@1234</code>. Change these after first use via the Change Password option.</span>
               </div>
             </div>
 
-            {/* ── Section 2: Editing Vehicle Details ── */}
+            {/* ── Section 2: Searching a Vehicle ── */}
             <div className="guide-section-card guide-card-blue">
-              <div className="guide-section-icon" style={{background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.25)'}}>✏️</div>
-              <div className="guide-section-title" style={{color:'var(--blue)'}}>2 · Editing Vehicle Details</div>
-              <div className="guide-section-desc">Admin users can update any vehicle field — location, test, status, team ownership, and more — via the edit popup.</div>
+              <div className="guide-section-icon" style={{background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.25)'}}>🔍</div>
+              <div className="guide-section-title" style={{color:'var(--blue)'}}>2 · Searching a Vehicle</div>
+              <div className="guide-section-desc">Use the Track Vehicles tab to instantly find any vehicle in the fleet. Five search modes are available — for chassis, VMS number, model, project, or location.</div>
               <div className="guide-steps">
                 {[
-                  ['1','Search for the vehicle you want to edit (see Section 1).'],
-                  ['2','Click the <strong>✏️ Edit Vehicle</strong> button on the vehicle result card (only visible to <strong>Admin</strong> role).'],
-                  ['3','The <strong>Edit Vehicle popup</strong> opens — all fields are editable in a clean grid form.'],
-                  ['4','<strong>Location</strong> — select from the dropdown. Changing location <strong>auto-sets today\'s date</strong> and clears the parking spot.'],
-                  ['5','<strong>Parking Spot</strong> — dropdown shows only <em>available</em> spots for the selected location (occupied spots are hidden).'],
-                  ['6','<strong>Team Ownership</strong> — choose from: <code>VA · EEE · Engine · CAL · Styling · ODT · Service · For Other Dept</code>.'],
-                  ['7','Click <strong>✓ Save Changes</strong>. If location changed, a notification prompt appears to send WhatsApp / SMS alert.'],
-                  ['8','The search result and all related views update instantly — no page refresh needed.'],
+                  ['1','Click <strong>🔍 Track Vehicles</strong> from the sidebar (or bottom nav on mobile).'],
+                  ['2','Select a search mode from the pill buttons: <strong>Chassis · VMS No · Model · Project · Location</strong>.'],
+                  ['3','<strong>Chassis Search:</strong> Type the <strong>last 5 digits</strong> of the chassis number (e.g. <code>45370</code>) and press <strong>SEARCH</strong> or hit Enter. The app matches only the last 5 digits.'],
+                  ['4','<strong>VMS No Search:</strong> Enter all <strong>8 digits</strong> across the split input boxes — format <code>YYYY-NNNN</code>. The cursor auto-advances between the two boxes as you type.'],
+                  ['5','<strong>Model / Project / Location:</strong> Pick a value from the dropdown list and click <strong>SEARCH</strong>. Returns all matching vehicles sorted by batch stage.'],
+                  ['6','Results appear below the search panel. Each result card shows: VMS No, Model, Batch, Chassis, Engine, Location, Test, Status, Date, Team, and Parking Spot.'],
+                  ['7','<strong>Scrapped vehicles</strong> are displayed with a red badge and reduced opacity — they appear at the bottom of results.'],
+                  ['8','After editing or closing, the <strong>search field resets automatically</strong> so you can start a fresh search.'],
                 ].map(([n,t])=>(
                   <div key={n} className="guide-step">
                     <div className="guide-step-num" style={{background:'rgba(59,130,246,0.2)',color:'var(--blue)'}}>{n}</div>
@@ -3252,44 +3632,52 @@ function App() {
               </div>
               <div className="guide-tip">
                 <span style={{fontSize:16,flexShrink:0}}>💡</span>
-                <span><strong style={{color:'var(--yellow)'}}>Note:</strong> Only <strong>Admin</strong> role can edit vehicles. Viewers can search and view, but the Edit button is hidden for them.</span>
+                <span><strong style={{color:'var(--yellow)'}}>Pro Tip:</strong> Use <strong>Location search</strong> to see every vehicle currently at a specific department in one view — great for daily floor checks.</span>
               </div>
             </div>
 
-            {/* ── Section 3: Understanding Dashboard / Stats ── */}
+            {/* ── Section 3: Editing Vehicle Details ── */}
             <div className="guide-section-card guide-card-purple">
-              <div className="guide-section-icon" style={{background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.25)'}}>📊</div>
-              <div className="guide-section-title" style={{color:'var(--purple)'}}>3 · Understanding the Dashboard &amp; Stats</div>
-              <div className="guide-section-desc">The app has several analytical views to understand fleet status at a glance.</div>
+              <div className="guide-section-icon" style={{background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.25)'}}>✏️</div>
+              <div className="guide-section-title" style={{color:'var(--purple)'}}>3 · Editing Vehicle Details</div>
+              <div className="guide-section-desc">Admin users can update any vehicle field — location, test, status, team ownership, parking spot, and more — via the Edit Vehicle popup.</div>
               <div className="guide-steps">
                 {[
-                  ['🗺️','<strong>Fleet Overview</strong> — KPI cards (Total Fleet, Active, Scrapped, Projects, Models, Departments), batch and team ownership bar charts, top locations, top models, and recently updated vehicles.'],
-                  ['📊','<strong>Dept Summary</strong> — A full table of every department with current vehicle count, capacity, available slots, and a colour-coded status badge (OK / LOW / FULL / OVER).'],
-                  ['🏍','<strong>Model &amp; Batch</strong> — Fleet breakdown grouped by model name, with batch-level sub-counts (Production, Pilot, Proto, Mule, etc.). Filter by model using the dropdown.'],
-                  ['🏢','<strong>VA Summary</strong> — Vehicles belonging to the VA team, their test purposes, and team-wise allocation inside the VA area.'],
-                  ['🅿️','<strong>VA Store Parking</strong> — Visual slot map of the VA Store (S1–S132) and VA Bay (VA1–VA20) showing occupied and available spots in real time.'],
-                ].map(([ico,t])=>(
-                  <div key={ico} className="guide-step">
-                    <div style={{fontSize:18,flexShrink:0,width:28,textAlign:'center'}}>{ico}</div>
+                  ['1','Search for the vehicle you want to edit (see Section 2).'],
+                  ['2','Click the <strong>✏️ Edit Vehicle</strong> button on the result card. This button is only visible to <strong>Admin</strong> users.'],
+                  ['3','The <strong>Edit Vehicle popup</strong> opens with all fields laid out in a grid. Editable fields: VMS No, Project, Model Name, Make, Batch, Engine Number, Location, Parking Spot, Test, Current Status, Date, Team Ownership.'],
+                  ['4','<strong>Chassis Number</strong> and <strong>ID</strong> are locked (read-only) — they cannot be changed after a vehicle is registered.'],
+                  ['5','<strong>Location</strong> — select from the dropdown list of all departments. Changing the location <strong>automatically sets today\'s date</strong> and clears the parking spot.'],
+                  ['6','<strong>Parking Spot</strong> — dropdown shows only <em>available</em> (unoccupied) slots for the selected location. Already-occupied slots are hidden to prevent conflicts.'],
+                  ['7','<strong>Team Ownership</strong> — choose from: <code>VA · EEE · Engine · CAL · Styling · ODT · Service · For Other Dept</code>.'],
+                  ['8','Click <strong>✓ Save Changes</strong> to apply. If the location was changed, a <strong>notification prompt</strong> appears (see Section 7).'],
+                  ['9','All views — search results, dashboard, parking map — update <strong>instantly</strong> with no page refresh needed.'],
+                ].map(([n,t])=>(
+                  <div key={n} className="guide-step">
+                    <div className="guide-step-num" style={{background:'rgba(139,92,246,0.2)',color:'var(--purple)'}}>{n}</div>
                     <div className="guide-step-text" dangerouslySetInnerHTML={{__html:t}}/>
                   </div>
                 ))}
               </div>
+              <div className="guide-tip">
+                <span style={{fontSize:16,flexShrink:0}}>💡</span>
+                <span><strong style={{color:'var(--yellow)'}}>Note:</strong> Only <strong>Admin</strong> role can edit vehicles. Viewers see the same data but the Edit button is hidden for them.</span>
+              </div>
             </div>
 
-            {/* ── Section 4: Tracking Vehicle Location ── */}
+            {/* ── Section 4: Adding a New Vehicle ── */}
             <div className="guide-section-card guide-card-cyan">
-              <div className="guide-section-icon" style={{background:'rgba(6,182,212,0.12)',border:'1px solid rgba(6,182,212,0.25)'}}>📍</div>
-              <div className="guide-section-title" style={{color:'var(--cyan)'}}>4 · Tracking Vehicle Location</div>
-              <div className="guide-section-desc">Always know exactly where a vehicle is — department, parking spot, and last movement date.</div>
+              <div className="guide-section-icon" style={{background:'rgba(6,182,212,0.12)',border:'1px solid rgba(6,182,212,0.25)'}}>➕</div>
+              <div className="guide-section-title" style={{color:'var(--cyan)'}}>4 · Adding a New Vehicle</div>
+              <div className="guide-section-desc">Register a brand-new vehicle chassis into the system using the Add Vehicle tab. Admin only.</div>
               <div className="guide-steps">
                 {[
-                  ['1','Every vehicle record stores a <strong>Location</strong> (e.g. VA Stores, EEE, CAL, Durability) and an optional <strong>Parking Spot</strong>.'],
-                  ['2','Search the vehicle by chassis or VMS No — the <strong>Location</strong> field is highlighted in cyan for instant visibility.'],
-                  ['3','The <strong>Date</strong> field shows the <em>last location change date</em> — automatically updated whenever location is edited.'],
-                  ['4','Use <strong>Search by Location</strong> mode (📍 Location pill) to see all vehicles currently at a specific department.'],
-                  ['5','Use the <strong>🅿️ VA Store Parking</strong> tab for a visual slot-by-slot map — hover over any slot to see which vehicle is parked there.'],
-                  ['6','When a vehicle is moved, a <strong>WhatsApp / SMS notification</strong> can be sent via the prompt that appears after saving.'],
+                  ['1','Click <strong>➕ Add Vehicle</strong> from the sidebar (only visible when logged in as Admin).'],
+                  ['2','Fill in the form fields: VMS No, Project, Model Name, Make, Batch, <strong>Chassis Number</strong> (required), Engine Number, Location, Test, Current Status, Date, Team Ownership.'],
+                  ['3','<strong>Chassis Number is mandatory</strong> — the form will not submit without it. All other fields are optional but recommended.'],
+                  ['4','If the chassis number already exists in the system, the add is <strong>rejected</strong> with an error — each chassis must be unique.'],
+                  ['5','Click <strong>➕ Add Vehicle</strong> to register. A success toast confirms the addition.'],
+                  ['6','The new vehicle is immediately available in all search modes, dashboards, and the parking map.'],
                 ].map(([n,t])=>(
                   <div key={n} className="guide-step">
                     <div className="guide-step-num" style={{background:'rgba(6,182,212,0.2)',color:'var(--cyan)'}}>{n}</div>
@@ -3299,24 +3687,88 @@ function App() {
               </div>
               <div className="guide-tip">
                 <span style={{fontSize:16,flexShrink:0}}>💡</span>
-                <span>Vehicles at <strong>Pending for Scrapping</strong> or <strong>Scrapped</strong> are shown with reduced opacity and a red badge to visually separate them from active fleet.</span>
+                <span>For adding many vehicles at once, use the <strong>Excel Import</strong> feature in the Export Data tab (Section 9) — it's faster than adding one by one.</span>
               </div>
             </div>
 
-            {/* ── Section 5: Importing Data from Excel ── */}
-            <div className="guide-section-card guide-card-green">
-              <div className="guide-section-icon" style={{background:'rgba(16,185,129,0.12)',border:'1px solid rgba(16,185,129,0.25)'}}>📂</div>
-              <div className="guide-section-title" style={{color:'var(--green)'}}>5 · Importing Data from Excel</div>
-              <div className="guide-section-desc">Bulk-load new vehicles from an Excel or CSV file. Duplicate chassis numbers are automatically detected and skipped.</div>
+            {/* ── Section 5: Fleet Overview Dashboard ── */}
+            <div className="guide-section-card guide-card-orange">
+              <div className="guide-section-icon" style={{background:'rgba(255,102,0,0.12)',border:'1px solid rgba(255,102,0,0.25)'}}>🗺️</div>
+              <div className="guide-section-title" style={{color:'var(--orange)'}}>5 · Fleet Overview Dashboard</div>
+              <div className="guide-section-desc">A high-level snapshot of the entire fleet — KPI cards, charts, top locations, and recent activity.</div>
               <div className="guide-steps">
                 {[
-                  ['1','Go to <strong>⬇️ Export Data</strong> tab in the sidebar.'],
-                  ['2','Scroll to the <strong>Import Vehicle Data</strong> section and click <strong>📂 Choose File to Import</strong>.'],
-                  ['3','Select an <strong>.xlsx, .xls, or .csv</strong> file from your device.'],
-                  ['4','The file must contain a <code>Chassis Number</code> column (the app also matches: VMS No, Model Name, Project, Batch, Location, Team Ownership, etc.).'],
-                  ['5','A <strong>preview modal</strong> appears showing how many records will be Added vs Skipped (duplicate chassis = skip).'],
-                  ['6','Click <strong>✅ IMPORT</strong> to confirm, or Cancel to discard.'],
-                  ['7','Newly imported vehicles are instantly available in all search and dashboard views.'],
+                  ['📊','<strong>KPI Cards (top row)</strong> — Total Fleet count, Active vehicles, Scrapped/Pending count, number of Projects, Models, and Departments currently in use.'],
+                  ['📈','<strong>Batch Distribution Bar</strong> — Visual bar showing fleet split across batch stages: Mule → Proto 1 → Proto 2 → Pre Pilot → Pilot → Pilot 2 → Production.'],
+                  ['🏢','<strong>Team Ownership Chart</strong> — Bar chart of vehicle counts per team (VA, EEE, CAL, Engine, etc.).'],
+                  ['📍','<strong>Top Locations</strong> — Ranked list of departments with the most vehicles currently. Quick way to see which area has the highest load.'],
+                  ['🏍','<strong>Top Models</strong> — Most common models in the fleet by vehicle count.'],
+                  ['🕐','<strong>Recently Updated</strong> — Last 10 vehicles whose location or data was changed, with timestamps. Useful for tracking recent activity.'],
+                ].map(([ico,t])=>(
+                  <div key={ico} className="guide-step">
+                    <div style={{fontSize:18,flexShrink:0,width:28,textAlign:'center'}}>{ico}</div>
+                    <div className="guide-step-text" dangerouslySetInnerHTML={{__html:t}}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Section 6: Dept Summary ── */}
+            <div className="guide-section-card guide-card-blue">
+              <div className="guide-section-icon" style={{background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.25)'}}>📊</div>
+              <div className="guide-section-title" style={{color:'var(--blue)'}}>6 · Department Summary &amp; Capacity</div>
+              <div className="guide-section-desc">Track vehicle counts, capacity, and availability for every department. Admin users can edit capacities and manage departments.</div>
+              <div className="guide-steps">
+                {[
+                  ['1','Click <strong>📊 Dept Summary</strong> in the sidebar. A table shows all departments with: Vehicle Count, Capacity, Available Slots, and a Status badge.'],
+                  ['2','<strong>Status badges:</strong> <code>OK</code> = under 75% full · <code>LOW</code> = 75–99% · <code>FULL</code> = at capacity · <code>OVER</code> = over capacity.'],
+                  ['3','Use the <strong>Filter by Department</strong> dropdown to focus on a single department in the table.'],
+                  ['4','<strong>Edit Capacity (Admin only)</strong> — click the pencil icon next to any department\'s capacity to override it with a custom value. This is saved for the session.'],
+                  ['5','<strong>Add Custom Department (Admin only)</strong> — use the Add Department form at the bottom to register a new location with a custom capacity. It will appear in Location dropdowns immediately.'],
+                  ['6','<strong>Remove Department (Admin only)</strong> — click the ✕ button on any department row to hide it from the summary. It can be re-added if needed.'],
+                  ['7','Capacity bars are colour-coded: green = low usage, yellow = moderate, red = near/over capacity.'],
+                ].map(([n,t])=>(
+                  <div key={n} className="guide-step">
+                    <div className="guide-step-num" style={{background:'rgba(59,130,246,0.2)',color:'var(--blue)'}}>{n}</div>
+                    <div className="guide-step-text" dangerouslySetInnerHTML={{__html:t}}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Section 7: Model & Batch + VA Summary ── */}
+            <div className="guide-section-card guide-card-purple">
+              <div className="guide-section-icon" style={{background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.25)'}}>🏍</div>
+              <div className="guide-section-title" style={{color:'var(--purple)'}}>7 · Model &amp; Batch · VA Summary</div>
+              <div className="guide-section-desc">Two specialist views for deeper fleet analysis — one by model/batch stage, one for the VA team's vehicles.</div>
+              <div className="guide-steps">
+                {[
+                  ['🏍','<strong>Model &amp; Batch tab</strong> — Fleet grouped by model name. Each model card shows total count and a breakdown by batch stage (Mule, Proto, Pilot, Production, etc.). Use the <strong>Filter by Model</strong> dropdown to isolate one model.'],
+                  ['🏢','<strong>VA Summary tab</strong> — Shows only vehicles where Team Ownership = VA. Displays vehicle cards with test details and a team-wise count summary. Useful for VA team internal reviews.'],
+                  ['📋','Both views are <strong>read-only for all roles</strong> — they are analytical views, not edit interfaces. Use the Track Vehicles tab to edit any vehicle shown here.'],
+                ].map(([ico,t])=>(
+                  <div key={ico} className="guide-step">
+                    <div style={{fontSize:18,flexShrink:0,width:28,textAlign:'center'}}>{ico}</div>
+                    <div className="guide-step-text" dangerouslySetInnerHTML={{__html:t}}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Section 8: VA Parking Maps ── */}
+            <div className="guide-section-card guide-card-green">
+              <div className="guide-section-icon" style={{background:'rgba(16,185,129,0.12)',border:'1px solid rgba(16,185,129,0.25)'}}>🅿️</div>
+              <div className="guide-section-title" style={{color:'var(--green)'}}>8 · VA Parking Maps</div>
+              <div className="guide-section-desc">Visual slot-by-slot layout of VA Store and VA Bay. See which spots are occupied and which are free — in real time.</div>
+              <div className="guide-steps">
+                {[
+                  ['1','Click <strong>🅿️ VA Parking</strong> in the sidebar to open the parking layout view.'],
+                  ['2','Two parking areas are shown: <strong>VA Store</strong> (slots S1–S132, arranged in 4 rows) and <strong>VA Bay</strong> (slots VA1–VA20, in 2 rows with a gangway in between).'],
+                  ['3','<strong>Green slots</strong> = available (empty). <strong>Orange/amber slots</strong> = occupied. Hover over any slot to see the chassis number, model, and VMS No of the parked vehicle.'],
+                  ['4','Occupancy counters at the top show total slots, how many are occupied, and how many are free — for both Store and Bay separately.'],
+                  ['5','The <strong>compass indicator</strong> shows orientation. The VA Bay door is at the upper-right corner. The VA Store entry is at the bottom.'],
+                  ['6','A <strong>parked vehicles table</strong> below each map lists all vehicles currently in that area with full details.'],
+                  ['7','To assign a parking spot to a vehicle, edit the vehicle (Section 3) and set its Location to <strong>VA Stores</strong> or <strong>VA</strong>, then select an available slot from the Parking Spot dropdown.'],
                 ].map(([n,t])=>(
                   <div key={n} className="guide-step">
                     <div className="guide-step-num" style={{background:'rgba(16,185,129,0.2)',color:'var(--green)'}}>{n}</div>
@@ -3326,26 +3778,102 @@ function App() {
               </div>
               <div className="guide-tip">
                 <span style={{fontSize:16,flexShrink:0}}>💡</span>
-                <span><strong style={{color:'var(--yellow)'}}>Recommended workflow:</strong> Export current data → add new rows in Excel → import back. The app skips existing chassis numbers automatically.</span>
+                <span>Parking spot dropdowns in the Edit popup show <strong>only available slots</strong> for the chosen location. Occupied spots are hidden automatically to prevent double-booking.</span>
               </div>
             </div>
 
-            {/* ── Section 6: Navigation Tips ── */}
+            {/* ── Section 9: Export & Import ── */}
             <div className="guide-section-card guide-card-yellow">
-              <div className="guide-section-icon" style={{background:'rgba(245,158,11,0.12)',border:'1px solid rgba(245,158,11,0.25)'}}>🧭</div>
-              <div className="guide-section-title" style={{color:'var(--yellow)'}}>6 · Navigation Tips</div>
-              <div className="guide-section-desc">Get around the app faster with these built-in navigation features.</div>
+              <div className="guide-section-icon" style={{background:'rgba(245,158,11,0.12)',border:'1px solid rgba(245,158,11,0.25)'}}>⬇️</div>
+              <div className="guide-section-title" style={{color:'var(--yellow)'}}>9 · Export &amp; Import Data</div>
+              <div className="guide-section-desc">Download the full fleet dataset in Excel, CSV, or JSON. Import new vehicles in bulk from a spreadsheet. A full data reset option is also available for Admins.</div>
+              <div className="guide-steps">
+                {[
+                  ['1','Click <strong>⬇️ Export Data</strong> in the sidebar to open the export/import panel.'],
+                  ['2','<strong>Export options:</strong> <code>Excel (.xls)</code> — for Microsoft Excel / Google Sheets &nbsp;|&nbsp; <code>CSV (.csv)</code> — universal format &nbsp;|&nbsp; <code>JSON (.json)</code> — structured data for developers. All formats include every field for all vehicles.'],
+                  ['3','<strong>Import (Add New Vehicles):</strong> Click <strong>📂 Choose File to Import</strong> and select a <code>.xlsx / .xls / .csv</code> file. The app reads the first sheet automatically.'],
+                  ['4','Column names are matched flexibly — variations like "Chassis No", "chassis_number", or "ChassisNumber" are all recognised. Always include a Chassis Number column.'],
+                  ['5','A <strong>preview modal</strong> appears showing: records to be <strong>Added</strong> (new chassis) vs <strong>Skipped</strong> (duplicate chassis already in the system).'],
+                  ['6','Click <strong>✅ IMPORT</strong> to confirm, or Cancel to discard. Imported vehicles are instantly live across all views.'],
+                  ['7','<strong>Full Data Reset (Admin only, PIN required):</strong> The red <em>Import New Data (Reset Existing)</em> button replaces <em>all</em> current data with the uploaded file. A PIN prompt and confirmation step prevent accidental resets. Use this for monthly master-data refreshes.'],
+                  ['8','The export summary panel shows: total vehicle count, fields per record, number of unique projects, models, locations, and teams included.'],
+                ].map(([n,t])=>(
+                  <div key={n} className="guide-step">
+                    <div className="guide-step-num" style={{background:'rgba(245,158,11,0.2)',color:'var(--yellow)'}}>{n}</div>
+                    <div className="guide-step-text" dangerouslySetInnerHTML={{__html:t}}/>
+                  </div>
+                ))}
+              </div>
+              <div className="guide-tip">
+                <span style={{fontSize:16,flexShrink:0}}>💡</span>
+                <span><strong style={{color:'var(--yellow)'}}>Recommended workflow:</strong> Export current data → update rows in Excel → use Import to add new vehicles. Existing chassis are automatically skipped so there is no risk of duplication.</span>
+              </div>
+            </div>
+
+            {/* ── Section 10: Notifications ── */}
+            <div className="guide-section-card guide-card-cyan">
+              <div className="guide-section-icon" style={{background:'rgba(6,182,212,0.12)',border:'1px solid rgba(6,182,212,0.25)'}}>📲</div>
+              <div className="guide-section-title" style={{color:'var(--cyan)'}}>10 · WhatsApp &amp; SMS Notifications</div>
+              <div className="guide-section-desc">Whenever a vehicle changes location, the app can send a formatted alert via WhatsApp or SMS with one tap.</div>
+              <div className="guide-steps">
+                {[
+                  ['1','After saving an edit where the <strong>Location field was changed</strong>, a <strong>Notify popup</strong> appears automatically.'],
+                  ['2','The popup shows the movement summary: Chassis No, Engine No, Test, <strong>From → To</strong> location, Parking Spot (if VA Stores), and current timestamp.'],
+                  ['3','Tap <strong>📲 WhatsApp</strong> to open WhatsApp with a pre-filled message ready to send to the designated contact.'],
+                  ['4','Tap <strong>💬 SMS</strong> to open the native SMS app with the same message pre-filled.'],
+                  ['5','Tap <strong>Skip</strong> to dismiss the popup without sending any notification.'],
+                  ['6','The notification message is formatted with bold labels in WhatsApp, and plain text for SMS — both include the vehicle details and a human-readable timestamp.'],
+                ].map(([n,t])=>(
+                  <div key={n} className="guide-step">
+                    <div className="guide-step-num" style={{background:'rgba(6,182,212,0.2)',color:'var(--cyan)'}}>{n}</div>
+                    <div className="guide-step-text" dangerouslySetInnerHTML={{__html:t}}/>
+                  </div>
+                ))}
+              </div>
+              <div className="guide-tip">
+                <span style={{fontSize:16,flexShrink:0}}>💡</span>
+                <span>WhatsApp notifications work best on <strong>mobile devices</strong> where WhatsApp is installed. On desktop, they open WhatsApp Web. SMS works on any device with cellular capability.</span>
+              </div>
+            </div>
+
+            {/* ── Section 11: Tracking Vehicle Location ── */}
+            <div className="guide-section-card guide-card-orange">
+              <div className="guide-section-icon" style={{background:'rgba(255,102,0,0.12)',border:'1px solid rgba(255,102,0,0.25)'}}>📍</div>
+              <div className="guide-section-title" style={{color:'var(--orange)'}}>11 · Tracking Vehicle Location &amp; History</div>
+              <div className="guide-section-desc">Always know exactly where each vehicle is — department, parking slot, last movement date, and test purpose.</div>
+              <div className="guide-steps">
+                {[
+                  ['1','Every vehicle stores: <strong>Location</strong> (department), optional <strong>Parking Spot</strong>, and a <strong>Date</strong> (last location change date).'],
+                  ['2','Search by chassis or VMS No — the <strong>Location</strong> field is highlighted in a coloured badge on the result card for instant visibility.'],
+                  ['3','The <strong>Date</strong> field shows when the location was <em>last changed</em>. It updates automatically whenever you change Location in the edit form.'],
+                  ['4','Use <strong>Location search mode</strong> to list all vehicles currently at a specific department — useful for floor checks and capacity planning.'],
+                  ['5','The <strong>🅿️ VA Parking map</strong> shows slot-level location for VA Store and VA Bay vehicles.'],
+                  ['6','<strong>Scrapped / Pending for Scrapping</strong> vehicles are shown at the bottom of all results with a red badge — they are excluded from capacity counts.'],
+                ].map(([n,t])=>(
+                  <div key={n} className="guide-step">
+                    <div className="guide-step-num" style={{background:'rgba(255,102,0,0.2)',color:'var(--orange)'}}>{n}</div>
+                    <div className="guide-step-text" dangerouslySetInnerHTML={{__html:t}}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Section 12: Navigation Tips ── */}
+            <div className="guide-section-card guide-card-blue">
+              <div className="guide-section-icon" style={{background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.25)'}}>🧭</div>
+              <div className="guide-section-title" style={{color:'var(--blue)'}}>12 · Navigation &amp; App Layout</div>
+              <div className="guide-section-desc">How to get around the app on desktop and mobile, and what each tab does.</div>
               <div className="guide-nav-grid">
                 {[
-                  ['🔍','Track Vehicles','Directly opens the Find a Vehicle search interface'],
-                  ['🗺️','Fleet Overview','High-level KPI cards, batch/team charts, recent activity'],
+                  ['🔍','Track Vehicles','Search and find any vehicle — main daily-use screen'],
+                  ['🗺️','Fleet Overview','KPI cards, batch/team charts, top locations, recent activity'],
                   ['📊','Dept Summary','Capacity table for all departments with status badges'],
-                  ['🏍','Model & Batch','Fleet grouped by model and batch stage'],
-                  ['🏢','VA Summary','VA team vehicle distribution and allocation'],
-                  ['🅿️','VA Parking','Visual slot map for VA Store and VA Bay'],
-                  ['➕','Add Vehicle','Register a new chassis into the system (Admin only)'],
-                  ['⬇️','Export Data','Download fleet data as Excel, CSV, or JSON / Import from file'],
-                  ['📖','How to Use','You are here — the complete user guide'],
+                  ['🏍','Model & Batch','Fleet grouped by model name and batch stage'],
+                  ['🏢','VA Summary','VA team vehicles — test details and team allocation'],
+                  ['🅿️','VA Parking','Visual slot map for VA Store (S1–S132) and VA Bay (VA1–VA20)'],
+                  ['➕','Add Vehicle','Register a new chassis (Admin only)'],
+                  ['⬇️','Export Data','Download as Excel/CSV/JSON · Bulk import · Full reset'],
+                  ['📖','How to Use','You are here — complete user guide'],
                 ].map(([ico,lbl,desc])=>(
                   <div key={lbl} className="guide-nav-item">
                     <span style={{fontSize:18,flexShrink:0}}>{ico}</span>
@@ -3359,9 +3887,11 @@ function App() {
               <div style={{marginTop:16,display:'flex',flexDirection:'column',gap:8}}>
                 {[
                   ['Every tab <strong>scrolls to the top</strong> automatically when clicked — no manual scrolling needed.','💡'],
-                  ['On <strong>mobile</strong>, use the bottom navigation bar. On <strong>desktop</strong>, use the left sidebar.','📱'],
-                  ['<strong>Switch Role</strong> button (top-right header) lets you toggle between Admin and Viewer without logging out.','🔄'],
-                  ['The <strong>live clock</strong> in the header always shows the current date and time.','🕐'],
+                  ['On <strong>mobile / tablet</strong>, use the bottom navigation bar. On <strong>desktop</strong>, use the left sidebar.','📱'],
+                  ['<strong>Switch Role</strong> button (top-right header) lets you switch between Admin and Viewer without logging out.','🔄'],
+                  ['The <strong>live clock</strong> in the header shows the current date and time at all times.','🕐'],
+                  ['<strong>Toast notifications</strong> (top-right corner, auto-dismiss after 3 seconds) confirm every action — save, import, error.','✅'],
+                  ['<strong>Mobile haptic feedback</strong> — the app vibrates subtly on button presses on devices that support it.','📳'],
                 ].map(([t,ico],i)=>(
                   <div key={i} className="guide-step">
                     <span style={{fontSize:16,flexShrink:0}}>{ico}</span>
@@ -3371,21 +3901,22 @@ function App() {
               </div>
             </div>
 
-            {/* ── Section 7: Important Notes ── */}
+            {/* ── Section 13: Important Notes ── */}
             <div className="guide-section-card guide-card-red">
               <div className="guide-section-icon" style={{background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.25)'}}>⚠️</div>
-              <div className="guide-section-title" style={{color:'var(--red)'}}>7 · Important Notes</div>
-              <div className="guide-section-desc">Please read these before making changes to vehicle data.</div>
+              <div className="guide-section-title" style={{color:'var(--red)'}}>13 · Important Notes &amp; Limitations</div>
+              <div className="guide-section-desc">Please read these before making any changes to vehicle data.</div>
               <div style={{display:'flex',flexDirection:'column',gap:8}}>
                 {[
-                  '<strong>No duplicate chassis numbers</strong> — The system rejects any vehicle with a chassis number already present. Each chassis must be unique.',
-                  '<strong>Data is session-only</strong> — Data lives in the browser session. Always export your latest data before closing the tab or refreshing.',
-                  '<strong>Location date auto-updates</strong> — Whenever you change the Location field, the Date field is automatically set to today. Do not manually override unless correcting historical data.',
-                  '<strong>Admin password required to edit</strong> — Vehicle creation, editing, and import are restricted to Admin role. Viewer role is read-only.',
-                  '<strong>Import column matching is automatic</strong> — The importer recognises common header variations (e.g. "Chassis No", "chassis_number", "ChassisNumber"). Ensure the Chassis Number column is always present.',
-                  '<strong>Parking spots are location-aware</strong> — The parking spot dropdown only shows slots valid for the selected location. Changing the location clears the existing spot to prevent conflicts.',
-                  '<strong>Scrapped vehicles are excluded</strong> — Vehicles at "Scrapped" or "Pending for Scrapping" are excluded from capacity calculations and shown at the bottom of search results.',
-                  '<strong>Data accuracy is your responsibility</strong> — Always verify chassis, engine numbers, and test information before saving. Incorrect data cannot be auto-corrected.',
+
+                  '<strong>No duplicate chassis numbers</strong> — The system rejects any vehicle whose chassis number already exists. Each chassis must be globally unique across all vehicles.',
+                  '<strong>Location date auto-updates</strong> — Changing the Location field automatically sets today\'s date. Do not manually override the Date field unless correcting a historical record.',
+                  '<strong>Admin password required for all edits</strong> — Vehicle creation, editing, importing, adding departments, and editing capacities are all restricted to Admin role. Viewer role is strictly read-only.',
+                  '<strong>Full Data Reset is irreversible</strong> — Using the red reset/import button replaces all existing data permanently for that session. Always export a backup before performing a full reset.',
+                  '<strong>Parking spots are location-aware</strong> — The parking spot dropdown only shows valid slots for the selected location. Changing location clears the existing spot to prevent invalid assignments.',
+                  '<strong>Scrapped vehicles are excluded from capacity</strong> — Vehicles at "Scrapped" or "Pending for Scrapping" do not count toward department capacity calculations.',
+                  '<strong>Import column matching is flexible but not guessable</strong> — The importer recognises common header variations. However, always ensure a <code>Chassis Number</code> column is present — the import will fail without it.',
+                  '<strong>Data accuracy is your responsibility</strong> — Always verify chassis numbers, engine numbers, and test information before saving. Incorrect entries cannot be auto-corrected.',
                 ].map((t,i)=>(
                   <div key={i} className="guide-warning">
                     <span style={{color:'var(--red)',fontSize:15,flexShrink:0,marginTop:1}}>⚠</span>
