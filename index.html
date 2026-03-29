@@ -620,7 +620,7 @@
       display: none;
       position: fixed;
       bottom: 0; left: 0; right: 0;
-      height: 82px;
+      height: 70px;
       background: rgba(6,8,16,0.98);
       border-top: 1px solid rgba(255,102,0,0.22);
       z-index: 300;
@@ -644,23 +644,23 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 8px 14px;
-      min-width: 72px;
+      padding: 6px 10px;
+      min-width: 60px;
       cursor: pointer;
       border-bottom: 3px solid transparent;
       transition: var(--transition);
-      gap: 4px;
+      gap: 3px;
       -webkit-tap-highlight-color: transparent;
     }
     .mobile-nav-item.active {
       border-bottom-color: var(--orange);
       background: rgba(255,102,0,0.07);
     }
-    .mobile-nav-item .nav-icon { font-size: 24px; line-height: 1; }
+    .mobile-nav-item .nav-icon { font-size: 18px; line-height: 1; }
     .mobile-nav-item .nav-label {
-      font-size: 10.5px;
+      font-size: 9px;
       font-weight: 700;
-      letter-spacing: 0.4px;
+      letter-spacing: 0.3px;
       text-transform: uppercase;
       font-family: var(--font-display);
       color: var(--text-muted);
@@ -676,7 +676,7 @@
       .main-content { margin-left: 0; padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
       .content-area { padding: 12px; max-width: 100vw; overflow-x: hidden; }
       .mobile-nav { display: flex; }
-      .app-header { padding: 0 12px; gap: 10px; }
+      .app-header { padding: 0 10px; gap: 8px; }
       .page-title { font-size: 16px; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .page-subtitle { font-size: 11.5px; }
       .stat-card { padding: 13px; }
@@ -693,10 +693,10 @@
       .guide-hero { padding: 22px 16px 18px; }
     }
     @media (max-width: 380px) {
-      .mobile-nav-item { padding: 6px 10px; min-width: 60px; }
-      .mobile-nav-item .nav-icon { font-size: 21px; }
-      .mobile-nav-item .nav-label { font-size: 9px; }
-      .page-title { font-size: 18px; }
+      .mobile-nav-item { padding: 5px 8px; min-width: 52px; }
+      .mobile-nav-item .nav-icon { font-size: 16px; }
+      .mobile-nav-item .nav-label { font-size: 8px; }
+      .page-title { font-size: 14px; max-width: 130px; }
     }
     @media (min-width: 769px) {
       .mobile-nav { display: none !important; }
@@ -2359,15 +2359,15 @@ function App() {
       {/* ========= HEADER ========= */}
       <header className="app-header">
         {/* Logo */}
-        <div style={{display:'flex',alignItems:'center',gap:14,flexShrink:0}}>
-          <div style={{background:'linear-gradient(135deg,#cc4400,var(--orange))',borderRadius:12,padding:'8px 18px',boxShadow:'0 4px 20px var(--orange-glow)',flexShrink:0}}>
-            <span style={{fontFamily:'var(--font-display)',fontWeight:900,fontSize:24,color:'white',letterSpacing:5}}>KTM</span>
+        <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+          <div style={{background:'linear-gradient(135deg,#cc4400,var(--orange))',borderRadius:10,padding:'6px 12px',boxShadow:'0 4px 20px var(--orange-glow)',flexShrink:0}}>
+            <span style={{fontFamily:'var(--font-display)',fontWeight:900,fontSize:20,color:'white',letterSpacing:4}}>KTM</span>
           </div>
-          <div>
-            <div style={{fontFamily:'var(--font-display)',fontSize:18,fontWeight:700,color:'var(--text-primary)',letterSpacing:2,textTransform:'uppercase',lineHeight:1}}>
-              Vehicle <span style={{color:'var(--orange)'}}>Tracking</span> System
+          <div style={{minWidth:0}}>
+            <div style={{fontFamily:'var(--font-display)',fontSize:14,fontWeight:700,color:'var(--text-primary)',letterSpacing:1.5,textTransform:'uppercase',lineHeight:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'180px'}}>
+              Vehicle <span style={{color:'var(--orange)'}}>Tracking</span>
             </div>
-            <div style={{fontSize:10,color:'var(--text-muted)',letterSpacing:2,textTransform:'uppercase',marginTop:4}}>R&D Department · Bajaj Auto Ltd.</div>
+            <div style={{fontSize:9,color:'var(--text-muted)',letterSpacing:1.5,textTransform:'uppercase',marginTop:3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'180px'}}>R&D · Bajaj Auto Ltd.</div>
           </div>
         </div>
 
