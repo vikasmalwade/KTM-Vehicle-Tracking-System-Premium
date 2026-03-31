@@ -677,9 +677,9 @@
       .content-area { padding: 12px; max-width: 100vw; overflow-x: hidden; }
       .mobile-nav { display: flex; }
       .app-header { padding: 0 10px; gap: 8px; height: 84px; }
-      .header-brand-title { font-size: 20px !important; max-width: 220px !important; }
-      .header-brand-sub { font-size: 11px !important; max-width: 220px !important; }
-      .page-title { font-size: 19px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .header-brand-title { font-size: 13px !important; max-width: 220px !important; }
+      .header-brand-sub { font-size: 9px !important; max-width: 220px !important; }
+      .page-title { font-size: 19px; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .page-subtitle { font-size: 12px; }
       .stat-card { padding: 13px; }
       .btn-primary { font-size: 11px; padding: 9px 18px; }
@@ -698,7 +698,7 @@
       .mobile-nav-item { padding: 5px 8px; min-width: 52px; }
       .mobile-nav-item .nav-icon { font-size: 16px; }
       .mobile-nav-item .nav-label { font-size: 8px; }
-      .page-title { font-size: 14px; max-width: 130px; }
+      .page-title { font-size: 14px; max-width: 200px; }
     }
     @media (min-width: 769px) {
       .mobile-nav { display: none !important; }
@@ -2410,12 +2410,12 @@ function App() {
             <span style={{fontFamily:'var(--font-display)',fontWeight:900,fontSize:22,color:'white',letterSpacing:4}}>KTM</span>
           </div>
           <div style={{minWidth:0}}>
-            <div className="header-brand-title" style={{fontFamily:'var(--font-display)',fontSize:16,fontWeight:700,color:'var(--text-primary)',letterSpacing:1.5,textTransform:'uppercase',lineHeight:1.25}}>
+            <div className="header-brand-title" style={{fontFamily:'var(--font-display)',fontSize:13,fontWeight:700,color:'var(--text-primary)',letterSpacing:1.2,textTransform:'uppercase',lineHeight:1.2}}>
               <span className="header-brand-line1">Vehicle</span>{' '}
               <span className="header-brand-line2"><span style={{color:'var(--orange)'}}>Tracking</span></span>{' '}
               <span className="header-brand-line3">System</span>
             </div>
-            <div className="header-brand-sub" style={{fontSize:10,color:'var(--text-muted)',letterSpacing:1.5,textTransform:'uppercase',marginTop:3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'180px'}}>R&D · Bajaj Auto Ltd.</div>
+            <div className="header-brand-sub" style={{fontSize:9,color:'var(--text-muted)',letterSpacing:1.2,textTransform:'uppercase',marginTop:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'180px'}}>R&D · Bajaj Auto Ltd.</div>
           </div>
         </div>
 
